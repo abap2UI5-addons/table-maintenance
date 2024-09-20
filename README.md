@@ -29,7 +29,6 @@ Pull Requests are welcome! Whether you're fixing a bug, adding new functionality
 # Demo
 ![image](https://github.com/user-attachments/assets/b5e7bf59-95e4-4c8c-a49e-f07db5730e7f)
 
-![Uploading image.png…]()
 
 
 
