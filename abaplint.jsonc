@@ -9,7 +9,7 @@
       "files": "/src/**/*.*"
     },
     {
-      "url": https://github.com/abap2UI5-addons/layout-variant-management",
+      "url": "https://github.com/abap2UI5-addons/layout-variant-management",
       "folder": "/abap2UI5-layout",
       "files": "/src/**/*.*"
     },
