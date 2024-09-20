@@ -567,8 +567,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
   METHOD render_main_head.
 
-
-      DATA(view) = z2ui5_cl_xml_view=>factory( ). "->shell( ).
+      DATA(view) = z2ui5_cl_xml_view=>factory( )->shell( ).
 
       IF client->get( )-check_launchpad_active = abap_true.
 
@@ -580,9 +579,6 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
                              shownavbutton = abap_false ).
       ENDIF.
 
-
-    result->header_content( )->scroll_container( height   = '70%'
-                                                 vertical = abap_true ).
   ENDMETHOD.
 
   METHOD render_main_footer.
@@ -639,7 +635,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    client->nav_app_call( ZSM30_cl_app_001a=>factory( io_table     = mt_table
+    client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
                                                            iv_row_id    = ls_arg
                                                            it_dfies     = mt_dfies
                                                            is_layout    = ms_layout
@@ -745,7 +741,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
       WHEN 'BUTTON_ADD'.
 
-        client->nav_app_call( ZSM30_cl_app_001a=>factory( io_table     = mt_table
+        client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
                                                                iv_row_id    = ``
                                                                it_dfies     = mt_dfies
                                                                is_layout    = ms_layout
@@ -1020,7 +1016,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(app) = CAST ZSM30_cl_app_001a( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST ZSM30_cl_app_01a( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mt_data->* <> mt_table->*.
           mv_change_active = abap_true.
