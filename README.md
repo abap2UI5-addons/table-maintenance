@@ -2,7 +2,7 @@
 SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 
 #### Features
-* Adjust Customizingentires with F4-Help Fixed Values and Search-Helps
+* Adjust Customizing entries with F4-Help Fixed Values and Search-Helps
 * Add Entries
 * Delete Entires
 * Transport Changes
