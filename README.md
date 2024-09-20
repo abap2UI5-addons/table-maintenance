@@ -1,5 +1,3 @@
-# SM30
-
 # ABAP SM30 for Cloud
 SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 
