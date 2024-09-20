@@ -6,7 +6,7 @@ CLASS zsm30_cl_app_01 DEFINITION
     INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
 
-    DATA ms_layout        TYPE z2ui5_cl_pop_display_layout=>ty_s_layout.
+    DATA mo_layout        TYPE ref to z2ui5_cl_layout.
     DATA mv_search_value  TYPE string.
     DATA mt_table         TYPE REF TO data.
     DATA mv_change_active TYPE abap_bool.
@@ -509,23 +509,23 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     DATA(columns) = table->columns( ).
 
-    LOOP AT ms_layout-t_layout REFERENCE INTO DATA(layout).
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
       columns->column( visible         = client->_bind( val       = layout->visible
-                                                        tab       = ms_layout-t_layout
+                                                        tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
                        halign          = client->_bind( val       = layout->halign
-                                                        tab       = ms_layout-t_layout
+                                                        tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
                        importance      = client->_bind( val       = layout->importance
-                                                        tab       = ms_layout-t_layout
+                                                        tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
                        mergeduplicates = client->_bind( val       = layout->merge
-                                                        tab       = ms_layout-t_layout
+                                                        tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
                        width           = client->_bind( val       = layout->width
-                                                        tab       = ms_layout-t_layout
+                                                        tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
        )->text( layout->tlabel ).
 
@@ -540,7 +540,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
                                                                      t_arg = VALUE #( ( `${ROW_ID}`  ) ) )
                                         )->cells( ).
 
-    LOOP AT ms_layout-t_layout REFERENCE INTO layout.
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
 
       IF layout->t_sub_col IS NOT INITIAL.
 
@@ -551,7 +551,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
           index = index + 1.
 
-          READ TABLE ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
+          READ TABLE mo_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
 
           IF line-reference_field IS INITIAL.
             DATA(Column) = |{ line-tlabel }: \{{ subcol-fname }\}|.
@@ -658,7 +658,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
                                                      iv_row_id    = ls_arg
                                                      it_dfies     = mt_dfies
-                                                     is_layout    = ms_layout
+                                                     io_layout    = mo_layout
                                                      iv_edit_mode = abap_true
                                                      iv_tabname   = mv_table ) ).
 
@@ -772,14 +772,14 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
         client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
                                                          iv_row_id    = ``
                                                          it_dfies     = mt_dfies
-                                                         is_layout    = ms_layout
+                                                         io_layout    = mo_layout
                                                          iv_edit_mode = abap_false
                                                          iv_tabname   = mv_table ) ).
 
       WHEN 'BUTTON_EDIT'.
 
         mv_multi_edit = COND #( WHEN mv_multi_edit = abap_false THEN abap_true ELSE abap_false ).
-        DATA(selkz) = REF #( ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
+        DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
         selkz->* = COND #( WHEN mv_multi_edit = abap_true THEN abap_true ELSE abap_false ).
 
         get_layout( ).
@@ -803,7 +803,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
   METHOD on_event_layout.
     client = z2ui5_cl_pop_display_layout=>on_event_layout( client = client
-                                                           layout = ms_layout ).
+                                                           layout = mo_layout ).
   ENDMETHOD.
 
   METHOD on_after_layout.
@@ -817,7 +817,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
         DATA(app) = CAST z2ui5_cl_pop_display_layout( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
-        ms_layout = app->ms_layout.
+        mo_layout->ms_layout = app->mo_layout->ms_layout.
 
         IF app->mv_rerender = abap_true.
           " subcolumns need rerendering to work ..
@@ -844,7 +844,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ELSE.
       control = z2ui5_cl_pop_display_layout=>ui_table.
     ENDIF.
-    ms_layout = z2ui5_cl_pop_display_layout=>init_layout( control  = control
+    mo_layout = z2ui5_cl_pop_display_layout=>init_layout( control  = control
                                                           data     = mt_table
                                                           handle01 = CONV #( class )
                                                           handle02 = CONV #( mv_table )
@@ -919,18 +919,18 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     DATA(columns) = table->ui_columns( ).
 
-    LOOP AT ms_layout-t_layout REFERENCE INTO DATA(layout).
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
       DATA(col) = columns->ui_column( visible        = client->_bind( val       = layout->visible
-                                                                      tab       = ms_layout-t_layout
+                                                                      tab       = mo_layout->ms_layout-t_layout
                                                                       tab_index = lv_index )
                                       halign         = client->_bind( val       = layout->halign
-                                                                      tab       = ms_layout-t_layout
+                                                                      tab       = mo_layout->ms_layout-t_layout
                                                                       tab_index = lv_index )
                                       width          = COND #( WHEN layout->width IS NOT INITIAL
                                                                THEN client->_bind( val       = layout->width
-                                                                                   tab       = ms_layout-t_layout
+                                                                                   tab       = mo_layout->ms_layout-t_layout
                                                                                    tab_index = lv_index ) )
 
                                       sortproperty   = layout->fname

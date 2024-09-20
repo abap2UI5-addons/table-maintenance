@@ -8,7 +8,7 @@ CLASS zsm30_cl_app_01a DEFINITION
 
     DATA ms_fixval   TYPE REF TO data.
     DATA ms_data_row TYPE REF TO data.
-    DATA ms_layout   TYPE z2ui5_cl_pop_display_layout=>ty_s_layout. " Importing
+    DATA mo_layout  TYPE ref to z2ui5_cl_layout. " Importing
     DATA mt_data     TYPE REF TO data.
     DATA mt_data_tmp TYPE REF TO data.
 
@@ -17,7 +17,7 @@ CLASS zsm30_cl_app_01a DEFINITION
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_util=>ty_t_dfies
-        is_layout     TYPE z2ui5_cl_pop_display_layout=>ty_s_layout
+        io_layout     TYPE ref to z2ui5_cl_layout "z2ui5_cl_pop_display_layout=>ty_s_layout
         iv_edit_mode  TYPE abap_bool
         iv_tabname    TYPE string
       RETURNING
@@ -174,7 +174,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      FINAL(text) = ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
+      FINAL(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
 
       simple_form->label( design = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' )
                           text   = text ).
@@ -625,7 +625,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
     result->mt_dfies   = it_dfies.
     result->mv_row_id  = iv_row_id.
-    result->ms_layout  = is_layout.
+    result->mo_layout  = io_layout.
     result->mv_edit    = iv_edit_mode.
     result->mv_tabname = iv_tabname.
 
