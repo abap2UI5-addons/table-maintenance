@@ -28,7 +28,9 @@ SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 Pull Requests are welcome! Whether you're fixing a bug, adding new functionality, or improving the documentation, your contributions are always appreciated. If you run into problems, feel free to open an issue.
 
 # Demo
-![image](https://github.com/user-attachments/assets/b5e7bf59-95e4-4c8c-a49e-f07db5730e7f)
+![image](https://github.com/user-attachments/assets/51a1d7e5-ca7e-4359-9e12-39b00b3c11bf)
+![image](https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c)
+
 
 
 
