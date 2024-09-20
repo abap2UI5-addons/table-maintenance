@@ -13,6 +13,8 @@ CLASS zsm30_cl_app_01 DEFINITION
     DATA mv_table         TYPE string.
     DATA mt_table_tmp     TYPE REF TO data.
     DATA mt_table_del     TYPE REF TO data.
+    DATA mv_input         TYPE string.
+    DATA mv_max_rows      TYPE int1 VALUE '50'.
 
   PROTECTED SECTION.
     TYPES:
@@ -21,6 +23,8 @@ CLASS zsm30_cl_app_01 DEFINITION
         key    TYPE string,
       END OF ty_s_keys.
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
+
+    DATA mv_input_visible  TYPE abap_bool.
 
     DATA mt_dfies          TYPE z2ui5_cl_util=>ty_t_dfies.
     DATA client            TYPE REF TO z2ui5_if_client.
@@ -106,6 +110,12 @@ CLASS zsm30_cl_app_01 DEFINITION
     METHODS button_copy.
     METHODS view_model_update.
     METHODS on_after_popup.
+
+    METHODS redner_input
+      IMPORTING
+        !page TYPE REF TO z2ui5_cl_xml_view.
+
+    METHODS check_table_name.
 
   PRIVATE SECTION.
 
@@ -374,7 +384,8 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
         SELECT *
           FROM (mv_table)
-          INTO CORRESPONDING FIELDS OF TABLE @<table>.
+          INTO CORRESPONDING FIELDS OF TABLE @<table>
+          UP TO @mv_max_rows ROWS.
 
         SORT <table>.
 
@@ -384,7 +395,10 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     set_row_id( ).
 
-    mt_table_tmp->* = mt_table->*.
+    IF mt_table IS BOUND.
+      mt_table_tmp->* = mt_table->*.
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD get_dfies.
@@ -414,6 +428,10 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
   METHOD on_init.
     get_table_name( ).
 
+    IF mv_table IS INITIAL.
+      RETURN.
+    ENDIF.
+
     get_data( ).
 
     get_dfies( ).
@@ -439,16 +457,14 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     tab = to_upper( tab ).
 
-    IF tab IS INITIAL.
-      mv_table = 'USR01'. " FALLBACK
-    ELSE.
-      mv_table = tab.
-    ENDIF.
+    mv_input_visible = COND #( WHEN tab IS INITIAL THEN abap_true ).
 
   ENDMETHOD.
 
   METHOD render_main.
     DATA(page) = render_main_head( ).
+
+    redner_input( page ).
 
     IF mv_multi_edit = abap_false.
 
@@ -462,9 +478,13 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     render_main_footer( page ).
 
+    client->view_display( page->stringify( ) ).
+
   ENDMETHOD.
 
   METHOD render_table.
+
+    CHECK mt_table IS BOUND.
 
     DATA(table) = page->table( growing          = 'true'
                                growingthreshold = '100'
@@ -485,7 +505,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
                                   width  = '17.5rem' ).
 
     headder = z2ui5_cl_pop_display_layout=>render_layout_function( xml    = headder
-                                                              client = client ).
+                                                                   client = client ).
 
     DATA(columns) = table->columns( ).
 
@@ -512,13 +532,13 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ENDLOOP.
 
     DATA(cells) = columns->get_parent( )->items(
-                                       )->column_list_item(
-                                           valign = 'Middle'
-                                           type   = 'Navigation'
-*                                           type   = 'Active'
-                                           press  = client->_event( val   = 'ROW_SELECT'
-                                                                    t_arg = VALUE #( ( `${ROW_ID}`  ) ) )
-                                       )->cells( ).
+                                        )->column_list_item(
+                                            valign = 'Middle'
+                                            type   = 'Navigation'
+*                                            type   = 'Active'
+                                            press  = client->_event( val   = 'ROW_SELECT'
+                                                                     t_arg = VALUE #( ( `${ROW_ID}`  ) ) )
+                                        )->cells( ).
 
     LOOP AT ms_layout-t_layout REFERENCE INTO layout.
 
@@ -567,23 +587,26 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
   METHOD render_main_head.
 
-      DATA(view) = z2ui5_cl_xml_view=>factory( )->shell( ).
+    DATA(view) = z2ui5_cl_xml_view=>factory( )->shell( ).
 
-      IF client->get( )-check_launchpad_active = abap_true.
+    IF client->get( )-check_launchpad_active = abap_true.
 
-        result = view->page( showheader = abap_false  ).
-        result->_z2ui5( )->lp_title( mv_table  ).
+      result = view->page( showheader = abap_false  ).
+      result->_z2ui5( )->lp_title( 'SM30'  ).
 
-      ELSE.
-        result = view->page( title         = mv_table
-                             shownavbutton = abap_false ).
-      ENDIF.
+    ELSE.
+      result = view->page( title         = 'SM30'
+                           shownavbutton = abap_false ).
+    ENDIF.
 
   ENDMETHOD.
 
   METHOD render_main_footer.
+
+    CHECK mv_table IS NOT INITIAL.
+
     DATA(footer) = page->footer( )->overflow_toolbar(
-                     )->toolbar_spacer( ).
+                      )->toolbar_spacer( ).
 
     IF mv_multi_edit = abap_true.
       footer->button( text  = 'Delete'
@@ -616,13 +639,10 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
                            press = client->_event( 'TRANSPORT_ALL' )
              )->menu_item( icon  = 'sap-icon://shipping-status'
                            text  = 'Change Transportrequest'
-                           press = client->_event( 'TRANSPORT_CHANGE' )
-             ).
+                           press = client->_event( 'TRANSPORT_CHANGE' ) ).
 *             ->menu_item( icon  = 'sap-icon://key-user-settings'
 *                           text  = 'Admin Mode'
 *                           press = client->_event( 'BUTTON_EDIT' ) ).
-
-      client->view_display( page->stringify( ) ).
 
   ENDMETHOD.
 
@@ -636,11 +656,11 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ENDIF.
 
     client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
-                                                           iv_row_id    = ls_arg
-                                                           it_dfies     = mt_dfies
-                                                           is_layout    = ms_layout
-                                                           iv_edit_mode = abap_true
-                                                           iv_tabname   = mv_table ) ).
+                                                     iv_row_id    = ls_arg
+                                                     it_dfies     = mt_dfies
+                                                     is_layout    = ms_layout
+                                                     iv_edit_mode = abap_true
+                                                     iv_tabname   = mv_table ) ).
 
   ENDMETHOD.
 
@@ -683,6 +703,10 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     ASSIGN mt_table->* TO <tab>.
 
+    IF <tab> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
     LOOP AT <tab> ASSIGNING <line>.
 
       ASSIGN COMPONENT 'ROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
@@ -721,6 +745,10 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
         client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
 
+      WHEN 'INPUT_DONE'.
+
+        check_table_name( ).
+
       WHEN 'BUTTON_REFRESH'.
 
         get_data( ).
@@ -742,11 +770,11 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
       WHEN 'BUTTON_ADD'.
 
         client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
-                                                               iv_row_id    = ``
-                                                               it_dfies     = mt_dfies
-                                                               is_layout    = ms_layout
-                                                               iv_edit_mode = abap_false
-                                                               iv_tabname   = mv_table ) ).
+                                                         iv_row_id    = ``
+                                                         it_dfies     = mt_dfies
+                                                         is_layout    = ms_layout
+                                                         iv_edit_mode = abap_false
+                                                         iv_tabname   = mv_table ) ).
 
       WHEN 'BUTTON_EDIT'.
 
@@ -773,10 +801,9 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
-
   METHOD on_event_layout.
     client = z2ui5_cl_pop_display_layout=>on_event_layout( client = client
-                                                      layout = ms_layout ).
+                                                           layout = ms_layout ).
   ENDMETHOD.
 
   METHOD on_after_layout.
@@ -818,10 +845,10 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
       control = z2ui5_cl_pop_display_layout=>ui_table.
     ENDIF.
     ms_layout = z2ui5_cl_pop_display_layout=>init_layout( control  = control
-                                                     data     = mt_table
-                                                     handle01 = CONV #( class )
-                                                     handle02 = CONV #( mv_table )
-                                                     handle03 = CONV #( 'SIMPLE_VIEW' ) ).
+                                                          data     = mt_table
+                                                          handle01 = CONV #( class )
+                                                          handle02 = CONV #( mv_table )
+                                                          handle03 = CONV #( 'SIMPLE_VIEW' ) ).
 
   ENDMETHOD.
 
@@ -888,7 +915,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
 
     toolbar = z2ui5_cl_pop_display_layout=>render_layout_function( xml    = toolbar
-                                                              client = client ).
+                                                                   client = client ).
 
     DATA(columns) = table->ui_columns( ).
 
@@ -1004,7 +1031,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
   METHOD view_model_update.
 
-         client->view_model_update( ).
+    client->view_model_update( ).
 
   ENDMETHOD.
 
@@ -1030,6 +1057,61 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
       CATCH cx_root.
     ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD redner_input.
+
+    DATA(form) = page->_z2ui5( )->focus( focusid = `ZINPUT`
+
+      )->simple_form( editable                = abap_true
+                      layout                  = `ResponsiveGridLayout`
+                      labelspans              = '3'
+                      labelspanm              = '3'
+                      labelspanl              = '3'
+                      labelspanxl             = '3'
+                      adjustlabelspan         = abap_false
+                      emptyspanxl             = '4'
+                      emptyspanl              = '4'
+                      emptyspanm              = '2'
+                      emptyspans              = '0'
+                      columnsxl               = '1'
+                      columnsl                = '1'
+                      columnsm                = '1'
+                      singlecontainerfullsize = abap_false
+                      visible                 = mv_input_visible
+                              )->content( ns = `form` ).
+
+    form->label( 'Tablename' )->input( id          = `ZINPUT`
+                                       value       = client->_bind_edit( mv_input )
+                                       submit      = client->_event( 'INPUT_DONE' )
+                                       placeholder = 'Please enter Table Name' ).
+
+    form->label( 'Rows' )->input( value         = client->_bind_edit( mv_max_rows )
+                                  showvaluehelp = abap_false
+                                  submit        = client->_event( 'INPUT_DONE' )
+                                  maxlength     = '3' ).
+
+  ENDMETHOD.
+
+  METHOD check_table_name.
+
+    mv_table = mv_input.
+
+    IF mv_table IS INITIAL.
+      CLEAR mt_table->*.
+      CLEAR mt_table.
+    ENDIF.
+
+    IF mv_max_rows IS INITIAL.
+      mv_max_rows = '999'.
+    ENDIF.
+
+    on_init( ).
+
+    client->view_model_update( ).
+
+    render_main( ).
 
   ENDMETHOD.
 
