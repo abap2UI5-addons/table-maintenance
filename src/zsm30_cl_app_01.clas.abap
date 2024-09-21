@@ -6,7 +6,7 @@ CLASS zsm30_cl_app_01 DEFINITION
     INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
 
-    DATA mo_layout        TYPE ref to z2ui5_cl_layout.
+    DATA mo_layout        TYPE REF TO z2ui5_cl_layout.
     DATA mv_search_value  TYPE string.
     DATA mt_table         TYPE REF TO data.
     DATA mv_change_active TYPE abap_bool.
@@ -25,7 +25,6 @@ CLASS zsm30_cl_app_01 DEFINITION
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
 
     DATA mv_input_visible  TYPE abap_bool.
-
     DATA mt_dfies          TYPE z2ui5_cl_util=>ty_t_dfies.
     DATA client            TYPE REF TO z2ui5_if_client.
     DATA check_initialized TYPE abap_bool.
@@ -35,24 +34,31 @@ CLASS zsm30_cl_app_01 DEFINITION
     DATA mv_transport      TYPE string.
     DATA mv_multi_edit     TYPE abap_bool.
     DATA mv_key_error      TYPE abap_bool.
-
     DATA mv_ucomm_tmp      TYPE string.
 
     METHODS on_init.
-
     METHODS on_event.
-
     METHODS search.
-
     METHODS get_data.
-
     METHODS set_row_id.
-
     METHODS get_dfies.
-
     METHODS row_select.
-
     METHODS render_main.
+    METHODS button_save.
+    METHODS on_event_main.
+    METHODS on_event_layout.
+    METHODS get_table_name.
+    METHODS on_after_layout.
+    METHODS get_layout.
+    METHODS on_after_transport.
+    METHODS transport_all.
+    METHODS on_event_transport.
+    METHODS button_delete.
+    METHODS check_input.
+    METHODS button_copy.
+    METHODS view_model_update.
+    METHODS on_after_popup.
+    METHODS check_table_name.
 
     METHODS get_txt
       IMPORTING
@@ -60,8 +66,6 @@ CLASS zsm30_cl_app_01 DEFINITION
         !type         TYPE char1 OPTIONAL
       RETURNING
         VALUE(result) TYPE string.
-
-    METHODS button_save.
 
     METHODS get_keys
       IMPORTING
@@ -81,21 +85,6 @@ CLASS zsm30_cl_app_01 DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_xml_view.
 
-    METHODS on_event_main.
-
-    METHODS on_event_layout.
-
-    METHODS get_table_name.
-
-    METHODS on_after_layout.
-
-    METHODS get_layout.
-
-    METHODS on_after_transport.
-
-    METHODS transport_all.
-    METHODS on_event_transport.
-
     METHODS render_ui_table
       IMPORTING
         !page TYPE REF TO z2ui5_cl_xml_view.
@@ -104,18 +93,9 @@ CLASS zsm30_cl_app_01 DEFINITION
       IMPORTING
         !page TYPE REF TO z2ui5_cl_xml_view.
 
-    METHODS button_delete.
-    METHODS check_input.
-
-    METHODS button_copy.
-    METHODS view_model_update.
-    METHODS on_after_popup.
-
     METHODS redner_input
       IMPORTING
         !page TYPE REF TO z2ui5_cl_xml_view.
-
-    METHODS check_table_name.
 
   PRIVATE SECTION.
 
@@ -486,102 +466,13 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     CHECK mt_table IS BOUND.
 
-    DATA(table) = page->table( growing          = 'true'
-                               growingthreshold = '100'
-                               width            = 'auto'
-                               autoPopinMode    = abap_true
-                               items            = client->_bind_edit( val = mt_table->* )
-                               headertext       = mv_table  ).
-
-    " TODO: variable is assigned but never used (ABAP cleaner)
-    DATA(headder) = table->header_toolbar(
-               )->overflow_toolbar(
-                 )->title( text = mv_table
-                 )->toolbar_spacer(
-                 )->search_field( value  = client->_bind_edit( mv_search_value )
-                                  search = client->_event( 'BUTTON_SEARCH' )
-                                  change = client->_event( 'BUTTON_SEARCH' )
-                                  id     = `SEARCH`
-                                  width  = '17.5rem' ).
-
-    headder = z2ui5_cl_pop_display_layout=>render_layout_function( xml    = headder
-                                                                   client = client ).
-
-    DATA(columns) = table->columns( ).
-
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
-      DATA(lv_index) = sy-tabix.
-
-      columns->column( visible         = client->_bind( val       = layout->visible
-                                                        tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-                       halign          = client->_bind( val       = layout->halign
-                                                        tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-                       importance      = client->_bind( val       = layout->importance
-                                                        tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-                       mergeduplicates = client->_bind( val       = layout->merge
-                                                        tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-                       width           = client->_bind( val       = layout->width
-                                                        tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-       )->text( layout->tlabel ).
-
-    ENDLOOP.
-
-    DATA(cells) = columns->get_parent( )->items(
-                                        )->column_list_item(
-                                            valign = 'Middle'
-                                            type   = 'Navigation'
-*                                            type   = 'Active'
-                                            press  = client->_event( val   = 'ROW_SELECT'
-                                                                     t_arg = VALUE #( ( `${ROW_ID}`  ) ) )
-                                        )->cells( ).
-
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
-
-      IF layout->t_sub_col IS NOT INITIAL.
-
-        DATA(sub_col) = ``.
-        DATA(index) = 0.
-
-        LOOP AT layout->t_sub_col INTO DATA(subcol).
-
-          index = index + 1.
-
-          READ TABLE mo_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
-
-          IF line-reference_field IS INITIAL.
-            DATA(Column) = |{ line-tlabel }: \{{ subcol-fname }\}|.
-          ELSE.
-            column = |{ line-tlabel }: \{{ subcol-fname }\} \{{ line-reference_field }\}|.
-          ENDIF.
-
-          IF index = 1.
-            sub_col = column.
-          ELSE.
-            sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.
-          ENDIF.
-        ENDLOOP.
-
-        IF layout->reference_field IS NOT INITIAL.
-          cells->object_identifier( title = |\{{ layout->fname }\} \{{ layout->reference_field }\}|
-                                    text  = sub_col ).
-        ELSE.
-          cells->object_identifier( title = |\{{ layout->fname }\}|
-                                    text  = sub_col ).
-        ENDIF.
-
-      ELSE.
-        IF layout->reference_field IS NOT INITIAL.
-          cells->object_identifier( text = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
-        ELSE.
-          cells->object_identifier( text = |\{{ layout->fname }\}| ).
-        ENDIF.
-      ENDIF.
-    ENDLOOP.
+    z2ui5_cl_xml_builder=>xml_build_table( i_data         = mt_table
+                                           i_search_value = REF #(  mv_search_value )
+                                           i_xml          = page
+                                           i_client       = client
+                                           i_layout       = mo_layout
+                                           i_col_BIND_TO  = 'ROW_ID'
+                                           i_col_type     = 'Navigation'  ).
 
   ENDMETHOD.
 
@@ -823,9 +714,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
           " subcolumns need rerendering to work ..
           render_main( ).
         ELSE.
-
           view_model_update( ).
-
         ENDIF.
       CATCH cx_root.
     ENDTRY.
@@ -840,15 +729,15 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 *    DATA(lgnum) = ZSM30_cl_parameter_helper=>get_parameter_id( '/SCWM/LGN'  ).
 
     IF mv_multi_edit = abap_false.
-      DATA(control) = z2ui5_cl_pop_display_layout=>m_table.
+      DATA(control) = z2ui5_cl_layout=>m_table.
     ELSE.
-      control = z2ui5_cl_pop_display_layout=>ui_table.
+      control = z2ui5_cl_layout=>ui_table.
     ENDIF.
     mo_layout = z2ui5_cl_pop_display_layout=>init_layout( control  = control
                                                           data     = mt_table
-                                                          handle01 = CONV #( class )
-                                                          handle02 = CONV #( mv_table )
-                                                          handle03 = CONV #( 'SIMPLE_VIEW' ) ).
+                                                          handle01 = class
+                                                          handle02 = mv_table
+                                                          handle03 = 'SIMPLE_VIEW'  ).
 
   ENDMETHOD.
 
@@ -922,19 +811,20 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      DATA(col) = columns->ui_column( visible        = client->_bind( val       = layout->visible
-                                                                      tab       = mo_layout->ms_layout-t_layout
-                                                                      tab_index = lv_index )
-                                      halign         = client->_bind( val       = layout->halign
-                                                                      tab       = mo_layout->ms_layout-t_layout
-                                                                      tab_index = lv_index )
-                                      width          = COND #( WHEN layout->width IS NOT INITIAL
-                                                               THEN client->_bind( val       = layout->width
-                                                                                   tab       = mo_layout->ms_layout-t_layout
-                                                                                   tab_index = lv_index ) )
+      DATA(col) = columns->ui_column(
+                      visible        = client->_bind( val       = layout->visible
+                                                      tab       = mo_layout->ms_layout-t_layout
+                                                      tab_index = lv_index )
+                      halign         = client->_bind( val       = layout->halign
+                                                      tab       = mo_layout->ms_layout-t_layout
+                                                      tab_index = lv_index )
+                      width          = COND #( WHEN layout->width IS NOT INITIAL
+                                               THEN client->_bind( val       = layout->width
+                                                                   tab       = mo_layout->ms_layout-t_layout
+                                                                   tab_index = lv_index ) )
 
-                                      sortproperty   = layout->fname
-                                      filterproperty = layout->fname
+                      sortproperty   = layout->fname
+                      filterproperty = layout->fname
                               )->text( layout->tlabel )->ui_template( ).
 
       IF layout->fname = 'SELKZ'.

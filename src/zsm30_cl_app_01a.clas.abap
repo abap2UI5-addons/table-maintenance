@@ -376,7 +376,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      <fixval> = z2ui5_cl_util=>rtti_get_t_ddic_fixed_values( CONV #( dfies->rollname ) ).
+      <fixval> = z2ui5_cl_util=>rtti_get_t_ddic_fixed_values( dfies->rollname  ).
 
     ENDLOOP.
 
