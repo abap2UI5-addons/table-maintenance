@@ -989,7 +989,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     mv_table = mv_input.
 
     IF mv_table IS INITIAL.
-      CLEAR mt_table->*.
+*      CLEAR mt_table->*.
       CLEAR mt_table.
     ENDIF.
 
