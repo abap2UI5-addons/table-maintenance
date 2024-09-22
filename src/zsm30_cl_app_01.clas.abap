@@ -693,8 +693,8 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_layout.
-    client = z2ui5_cl_pop_display_layout=>on_event_layout( client = client
-                                                           layout = mo_layout ).
+    z2ui5_cl_pop_display_layout=>on_event_layout( client = client
+                                                  layout = mo_layout ).
   ENDMETHOD.
 
   METHOD on_after_layout.

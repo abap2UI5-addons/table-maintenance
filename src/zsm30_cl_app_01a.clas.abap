@@ -8,7 +8,7 @@ CLASS zsm30_cl_app_01a DEFINITION
 
     DATA ms_fixval   TYPE REF TO data.
     DATA ms_data_row TYPE REF TO data.
-    DATA mo_layout  TYPE ref to z2ui5_cl_layout. " Importing
+    DATA mo_layout  TYPE REF TO z2ui5_cl_layout. " Importing
     DATA mt_data     TYPE REF TO data.
     DATA mt_data_tmp TYPE REF TO data.
 
@@ -17,7 +17,7 @@ CLASS zsm30_cl_app_01a DEFINITION
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_util=>ty_t_dfies
-        io_layout     TYPE ref to z2ui5_cl_layout "z2ui5_cl_pop_display_layout=>ty_s_layout
+        io_layout     TYPE REF TO z2ui5_cl_layout "z2ui5_cl_pop_display_layout=>ty_s_layout
         iv_edit_mode  TYPE abap_bool
         iv_tabname    TYPE string
       RETURNING
@@ -129,7 +129,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    LOOP AT mt_dfies INTO FINAL(dfies).
+    LOOP AT mt_dfies INTO DATA(dfies).
 
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_tab>).
       ASSIGN ms_data_row->* TO <table_row>.
@@ -147,11 +147,11 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     FIELD-SYMBOLS <row>      TYPE any.
     FIELD-SYMBOLS <s_fixval> TYPE any.
 
-    FINAL(popup) = z2ui5_cl_xml_view=>factory_popup( ).
+    DATA(popup) = z2ui5_cl_xml_view=>factory_popup( ).
 
-    FINAL(title) = COND #( WHEN mv_edit = abap_true THEN 'Edit' ELSE 'Add' ).
+    DATA(title) = COND #( WHEN mv_edit = abap_true THEN 'Edit' ELSE 'Add' ).
 
-    FINAL(simple_form) = popup->dialog( title        = title
+    DATA(simple_form) = popup->dialog( title        = title
                                         contentwidth = '60%'
                                         afterclose   = client->_event( 'POPUP_CLOSE' )
            )->simple_form( title    = ''
@@ -174,7 +174,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      FINAL(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
+      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
 
       simple_form->label( design = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' )
                           text   = text ).
@@ -185,7 +185,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      FINAL(type) = get_input_type( CONV #( dfies->inttype ) ).
+      DATA(type) = get_input_type( CONV #( dfies->inttype ) ).
 
       IF dfies->checktable IS NOT INITIAL.
 
@@ -239,7 +239,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
     ENDLOOP.
 
-    FINAL(toolbar) = simple_form->get_root( )->get_child(
+    DATA(toolbar) = simple_form->get_root( )->get_child(
               )->buttons( ).
 
     toolbar->button( text  = 'Close'
@@ -330,7 +330,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
   METHOD get_txt.
 
-    FINAL(texts) = z2ui5_cl_util=>rtti_get_data_element_texts( roll ).
+    DATA(texts) = z2ui5_cl_util=>rtti_get_data_element_texts( roll ).
 
     CASE type.
       WHEN 'L'.
@@ -431,7 +431,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     ASSIGN mt_data->* TO <tab>.
 
     " TODO: variable is assigned but never used (ABAP cleaner)
-    FINAL(t_arg) = client->get( )-t_event_arg.
+    DATA(t_arg) = client->get( )-t_event_arg.
 
     IF sy-subrc = 0.
       DELETE <tab> INDEX index.
@@ -449,7 +449,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
 
     " create dynamic where condition
-    LOOP AT mt_dfies INTO FINAL(dfies) WHERE keyflag = abap_true.
+    LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true.
 
       ASSIGN ms_data_row->* TO <row>.
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -458,7 +458,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         IF lv_where IS INITIAL.
           lv_where = |{ dfies-fieldname } = `{ <value_struc> }`|.
         ELSE.
-          FINAL(lv_where_and) = |AND { dfies-fieldname } = `{ <value_struc> }`|.
+          DATA(lv_where_and) = |AND { dfies-fieldname } = `{ <value_struc> }`|.
           CONCATENATE lv_where lv_where_and INTO lv_where SEPARATED BY space.
         ENDIF.
       ENDIF.
@@ -479,7 +479,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
     FIELD-SYMBOLS <row> TYPE any.
 
-    LOOP AT mt_dfies INTO FINAL(dfies).
+    LOOP AT mt_dfies INTO DATA(dfies).
 
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE row TO FIELD-SYMBOL(<value_tab>).
 
@@ -493,7 +493,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        FINAL(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
+        DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
 
         SELECT SINGLE funcname FROM tfdir
           INTO @DATA(lv_conex)
@@ -503,14 +503,17 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
           TRY.
               CALL FUNCTION lv_conex
-                EXPORTING  input  = <value_struc>
-                IMPORTING  output = <value_tab>
-                EXCEPTIONS OTHERS = 99.
+                EXPORTING
+                  input  = <value_struc>
+                IMPORTING
+                  output = <value_tab>
+                EXCEPTIONS
+                  OTHERS = 99.
               IF sy-subrc <> 0.
 
               ENDIF.
 
-            CATCH cx_root INTO FINAL(cx). " TODO: variable is assigned but never used (ABAP cleaner)
+            CATCH cx_root INTO DATA(cx). " TODO: variable is assigned but never used (ABAP cleaner)
 
           ENDTRY.
 
@@ -581,11 +584,11 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
     FIELD-SYMBOLS <row> TYPE any.
 
-    FINAL(lt_arg) = client->get( )-t_event_arg.
+    DATA(lt_arg) = client->get( )-t_event_arg.
 
     mv_f4_fname = VALUE string( lt_arg[ 1 ] ).
 
-    READ TABLE mt_dfies INTO FINAL(dfies) WITH KEY fieldname = mv_f4_fname.
+    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -630,14 +633,14 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     result->mv_tabname = iv_tabname.
 
     TRY.
-        FINAL(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( io_table ).
+        DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( io_table ).
       CATCH cx_root.
     ENDTRY.
 
     TRY.
-        FINAL(new_struct_desc) = cl_abap_structdescr=>create( comp ).
+        DATA(new_struct_desc) = cl_abap_structdescr=>create( comp ).
 
-        FINAL(new_table_desc) = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
+        DATA(new_table_desc) = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
                                                             p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA result->mt_data     TYPE HANDLE new_table_desc.
@@ -688,7 +691,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
         IF app->mv_return_value IS NOT INITIAL.
 
-          READ TABLE mt_dfies INTO FINAL(dfies) WITH KEY fieldname = mv_f4_fname.
+          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
 
           ASSIGN ms_data_row->* TO <row>.
           ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
