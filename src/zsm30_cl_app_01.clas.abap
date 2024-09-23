@@ -733,11 +733,11 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ELSE.
       control = z2ui5_cl_layout=>ui_table.
     ENDIF.
-    mo_layout = z2ui5_cl_pop_display_layout=>init_layout( control  = control
-                                                          data     = mt_table
-                                                          handle01 = class
-                                                          handle02 = mv_table
-                                                          handle03 = 'SIMPLE_VIEW'  ).
+    mo_layout = z2ui5_cl_layout=>factory( control  = control
+                                          data     = mt_table
+                                          handle01 = class
+                                          handle02 = mv_table
+                                          handle03 = 'SIMPLE_VIEW'  ).
 
   ENDMETHOD.
 
