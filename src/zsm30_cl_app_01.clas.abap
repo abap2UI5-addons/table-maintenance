@@ -804,7 +804,8 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
 
     toolbar = z2ui5_cl_pop_display_layout=>render_layout_function( xml    = toolbar
-                                                                   client = client ).
+                                                                   client = client
+                                                                   layout = mo_layout ).
 
     DATA(columns) = table->ui_columns( ).
 
