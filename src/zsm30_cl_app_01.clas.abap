@@ -369,7 +369,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
         SORT <table>.
 
-      CATCH cx_root.
+      CATCH cx_root into DATA(cx).
 
     ENDTRY.
 

@@ -8,7 +8,7 @@ CLASS zsm30_cl_app_01a DEFINITION
 
     DATA ms_fixval   TYPE REF TO data.
     DATA ms_data_row TYPE REF TO data.
-    DATA mo_layout  TYPE REF TO z2ui5_cl_layout. " Importing
+    DATA mo_layout   TYPE REF TO z2ui5_cl_layout. " Importing
     DATA mt_data     TYPE REF TO data.
     DATA mt_data_tmp TYPE REF TO data.
 
@@ -17,13 +17,15 @@ CLASS zsm30_cl_app_01a DEFINITION
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_util=>ty_t_dfies
-        io_layout     TYPE REF TO z2ui5_cl_layout "z2ui5_cl_pop_display_layout=>ty_s_layout
+        io_layout     TYPE REF TO z2ui5_cl_layout " z2ui5_cl_pop_display_layout=>ty_s_layout
         iv_edit_mode  TYPE abap_bool
         iv_tabname    TYPE string
       RETURNING
         VALUE(result) TYPE REF TO zsm30_cl_app_01a.
 
   PROTECTED SECTION.
+
+
     DATA client       TYPE REF TO z2ui5_if_client.
 
     DATA mv_init      TYPE abap_bool.
@@ -79,6 +81,7 @@ CLASS zsm30_cl_app_01a DEFINITION
     METHODS on_after_shlp.
     METHODS on_after_f4.
     METHODS Copy_table_line.
+        METHODS get_view_settings.
 
   PRIVATE SECTION.
 
@@ -113,6 +116,8 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     table_to_row( ).
 
     get_fixval( ).
+
+    get_view_settings( ).
 
   ENDMETHOD.
 
@@ -152,8 +157,8 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     DATA(title) = COND #( WHEN mv_edit = abap_true THEN 'Edit' ELSE 'Add' ).
 
     DATA(simple_form) = popup->dialog( title        = title
-                                        contentwidth = '60%'
-                                        afterclose   = client->_event( 'POPUP_CLOSE' )
+                                       contentwidth = '60%'
+                                       afterclose   = client->_event( 'POPUP_CLOSE' )
            )->simple_form( title    = ''
                            layout   = 'ResponsiveGridLayout'
                            editable = abap_true
@@ -477,6 +482,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
   METHOD data_to_table.
 
+
     FIELD-SYMBOLS <row> TYPE any.
 
     LOOP AT mt_dfies INTO DATA(dfies).
@@ -493,31 +499,31 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
+        TRY.
 
-        SELECT SINGLE funcname FROM tfdir
-          INTO @DATA(lv_conex)
-          WHERE funcname = @conv.
+            DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
 
-        IF sy-subrc = 0.
+            SELECT SINGLE funcname
+              FROM ZSM30_V_TFDIR
+              WHERE funcname = @conv
+              INTO @DATA(conex).
 
-          TRY.
-              CALL FUNCTION lv_conex
-                EXPORTING
-                  input  = <value_struc>
-                IMPORTING
-                  output = <value_tab>
-                EXCEPTIONS
-                  OTHERS = 99.
+            IF sy-subrc = 0.
+
+              CALL FUNCTION conex
+                EXPORTING  input  = <value_struc>
+                IMPORTING  output = <value_tab>
+                EXCEPTIONS OTHERS = 99.
               IF sy-subrc <> 0.
 
               ENDIF.
 
-            CATCH cx_root INTO DATA(cx). " TODO: variable is assigned but never used (ABAP cleaner)
+            ENDIF.
 
-          ENDTRY.
+          CATCH cx_root.
+            <value_tab> = <value_struc>.
+        ENDTRY.
 
-        ENDIF.
       ELSE.
 
         IF dfies-lowercase = abap_false.
@@ -641,7 +647,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         DATA(new_struct_desc) = cl_abap_structdescr=>create( comp ).
 
         DATA(new_table_desc) = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
-                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
+                                                           p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA result->mt_data     TYPE HANDLE new_table_desc.
         CREATE DATA result->mt_data_TMP TYPE HANDLE new_table_desc.
@@ -761,6 +767,15 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
       ENDIF.
 
     ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_view_settings.
+
+            SELECT *
+              FROM ZSM30_V_DD27S
+              WHERE viewname = @mv_tabname
+              INTO table @DATA(dd07s).
 
   ENDMETHOD.
 
