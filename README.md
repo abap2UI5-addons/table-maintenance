@@ -16,7 +16,7 @@ SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 #### Required Projects:
 * [S-RTTI](https://github.com/sandraros/S-RTTI)
 * [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-* [F4-Help and Transport functions](https://github.com/abap2UI5-addons/popups)
+* [Value-Help and Transport functions](https://github.com/abap2UI5-addons/popups)
 * [Layout Management](https://github.com/abap2UI5-addons/layout-variant-management)
 
 
