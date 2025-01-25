@@ -376,7 +376,8 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     set_row_id( ).
 
     IF mt_table IS BOUND.
-      mt_table_tmp->* = mt_table->*.
+      ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<table_tmp>).
+      <table_tmp> = <table>.
     ENDIF.
 
   ENDMETHOD.
@@ -792,13 +793,14 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
   METHOD render_ui_table.
 
+    ASSIGN mt_table->* TO FIELD-SYMBOL(<table>).
     DATA(table) = page->flex_box( height = '85vh' )->ui_table(
                                                       alternaterowcolors  = 'true'
                                                       visiblerowcountmode = 'Auto'
 *                                                      fixedrowcount       = '1'
                                                       selectionmode       = 'None'
                                                       SelectionBehavior   = 'RowSelector'
-                                                      rows                = client->_bind_edit( val = mt_table->* ) ).
+                                                      rows                = client->_bind_edit( val = <table> ) ).
 
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
@@ -880,7 +882,9 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     CLEAR mv_key_error.
 
-    IF mt_table_tmp->* <> mt_table->*.
+    ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<table_tmp>).
+    ASSIGN mt_table->* TO FIELD-SYMBOL(<table>).
+    IF <table_tmp> <> <table>.
       mv_change_active = abap_true.
     ELSE.
       mv_change_active = abap_false.
@@ -936,13 +940,14 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     TRY.
         DATA(app) = CAST ZSM30_cl_app_01a( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
-        IF app->mt_data->* <> mt_table->*.
+        ASSIGN app->mt_data->* TO FIELD-SYMBOL(<data>).
+        ASSIGN mt_table->* TO FIELD-SYMBOL(<table>).
+        IF <data> <> <table>.
           mv_change_active = abap_true.
         ENDIF.
 
         " ROW Deleted?
-
-        mt_table->* = app->mt_data->*.
+        <table> = <data>.
 
         view_model_update( ).
 
