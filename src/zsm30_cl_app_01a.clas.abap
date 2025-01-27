@@ -315,7 +315,9 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
       WHEN 'POPUP_CLOSE'.
 
-        mt_data->* = mt_data_tmp->*.
+        ASSIGN mt_data_tmp->* TO FIELD-SYMBOL(<data_tmp>).
+        ASSIGN mt_data->* TO FIELD-SYMBOL(<data>).
+        <data> = <data_tmp>.
 
         client->popup_destroy( ).
 
@@ -656,8 +658,13 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
       CATCH cx_root.
     ENDTRY.
 
-    result->mt_data->* = io_table->*.
-    result->mt_data_tmp->* = io_table->*.
+    FIELD-SYMBOLS <data> TYPE ANY TABLE.
+    ASSIGN result->mt_data->* TO <data>.
+    ASSIGN result->mt_data_tmp->* TO FIELD-SYMBOL(<data_tmp>).
+    ASSIGN io_table->* TO FIELD-SYMBOL(<io_table>).
+
+    <data> = <io_table>.
+    <data_tmp> = <io_table>.
 
     IF iv_row_id IS INITIAL.
 
@@ -673,7 +680,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
         ASSIGN COMPONENT `ROW_ID` OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
         IF <value> IS ASSIGNED.
 
-          <value> = lines( result->mt_data->* ).
+          <value> = lines( <data> ).
           result->mv_row_id = <value>.
         ENDIF.
 
@@ -761,8 +768,13 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
       ASSIGN COMPONENT `ROW_ID` OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
       IF <value> IS ASSIGNED.
 
-        <line> = ms_data_row->*.
-        <value> = lines( mt_data->* ).
+        ASSIGN ms_data_row->* TO FIELD-SYMBOL(<row>).
+
+        FIELD-SYMBOLS <data> TYPE ANY TABLE.
+        ASSIGN mt_data->* TO <data>.
+
+        <line> = <row>.
+        <value> = lines( <data> ).
         mv_row_id = <value>.
       ENDIF.
 
