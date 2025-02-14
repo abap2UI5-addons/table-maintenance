@@ -3,7 +3,6 @@ CLASS zsm30_cl_app_01 DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
 
     DATA mo_layout        TYPE REF TO z2ui5_cl_layout.
@@ -369,7 +368,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
         SORT <table>.
 
-      CATCH cx_root into DATA(cx).
+      CATCH cx_root INTO DATA(cx).
 
     ENDTRY.
 
@@ -694,7 +693,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_layout.
-    z2ui5_cl_pop_display_layout=>on_event_layout( client = client
+    z2ui5_cl_pop_layout=>on_event_layout( client = client
                                                   layout = mo_layout ).
   ENDMETHOD.
 
@@ -707,7 +706,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_pop_display_layout( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_pop_layout( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         mo_layout->ms_layout = app->mo_layout->ms_layout.
 
@@ -805,7 +804,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
 
-    toolbar = z2ui5_cl_pop_display_layout=>render_layout_function( xml    = toolbar
+    toolbar = z2ui5_cl_pop_layout=>render_layout_function( xml    = toolbar
                                                                    client = client
                                                                    layout = mo_layout ).
 
