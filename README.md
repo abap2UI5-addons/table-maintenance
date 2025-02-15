@@ -1,11 +1,20 @@
-## ABAP SM30 for Cloud
+## table-maintenance
 SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 
 
-#### Apps
-* SE16 Display Data
-* SM30 Edit Data
-* table-content-loader upload/download data
+#### Content
+
+| App    | Description |
+| -------- | ------- |
+| SE16  | Display Data    |
+| SM30 | Edit Data   |
+| table-content-loader    | upload/download data  |
+
+| Popup    | Description |
+| -------- | ------- |
+| Value Help  | Generate value help dialogs based on DDIC information    |
+| Transport Requests | Display transport requests in a user-friendly way. |
+
 
 #### Features
 * Adjust Customizing entries with F4-Help Fixed Values and Search-Helps
@@ -19,9 +28,8 @@ SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 * S/4 Private Cloud or On-Premise (ABAP for Cloud, Standard ABAP)
 * R/3 NetWeaver AS ABAP 7.50 or higher (Standard ABAP)
 
+
 #### Required Projects:
-* [S-RTTI](https://github.com/sandraros/S-RTTI)
-* [abap2UI5](https://github.com/abap2UI5/abap2UI5)
 * [Layout Management](https://github.com/abap2UI5-addons/layout-variant-management)
 
 
@@ -35,23 +43,3 @@ Pull Requests are welcome! Whether you're fixing a bug, adding new functionality
 ## Demo
 ![image](https://github.com/user-attachments/assets/51a1d7e5-ca7e-4359-9e12-39b00b3c11bf)
 ![image](https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c)
-
-
-
-
-### Popups
-
-#### Value Help
-Generate value help dialogs based on DDIC information:
-
-<img width="800" alt="Google Chrome 2024-09-12 15 18 44" src="https://github.com/user-attachments/assets/130dd242-bd05-46eb-9ebc-1f2fad9716c9">
-
-#### Transport Requests
-Display transport requests in a user-friendly way.
-
-
-
-
-
-
-
