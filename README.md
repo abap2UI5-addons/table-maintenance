@@ -1,5 +1,5 @@
 ## table-maintenance
-SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
+Maintain Tables in Your Browser – No Need for Eclipse or SAP GUI Installation
 
 
 #### Content
