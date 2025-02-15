@@ -1,5 +1,5 @@
 ## table-maintenance
-Maintain Tables in Your Browser – No Need for Eclipse or SAP GUI Installation
+Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installation
 
 
 #### Content
