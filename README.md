@@ -1,6 +1,12 @@
 ## ABAP SM30 for Cloud
 SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 
+
+#### Apps
+* SE16 Display Data
+* SM30 Edit Data
+* table-content-loader upload/download data
+
 #### Features
 * Adjust Customizing entries with F4-Help Fixed Values and Search-Helps
 * Add Entries
@@ -16,7 +22,6 @@ SM30 in your Browser – No Need for Eclipse or SAP GUI Installation
 #### Required Projects:
 * [S-RTTI](https://github.com/sandraros/S-RTTI)
 * [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-* [Value-Help and Transport functions](https://github.com/abap2UI5-addons/popups)
 * [Layout Management](https://github.com/abap2UI5-addons/layout-variant-management)
 
 
