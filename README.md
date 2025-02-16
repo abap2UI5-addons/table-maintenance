@@ -9,7 +9,7 @@
 # table-maintenance
 Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installation
 
-#### Content
+#### Functionality
 * SE16 App | Display Data
 * SM30 App | Edit Data, Adjust Customizing entries with F4-Help Fixed Values and Search-Helps, Add Entries, Delete Entires, Transport Changes
 * table-content-loader App  | upload/download data 
