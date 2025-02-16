@@ -2,22 +2,16 @@
 Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installation
 
 
+
 #### Content
 
 | Function    | Description |
 | -------- | ------- |
 | SE16 (App) | Display Data    |
-| SM30 (App)| Edit Data   |
+| SM30 (App)| Edit Data, Adjust Customizing entries with F4-Help Fixed Values and Search-Helps, Add Entries, Delete Entires, Transport Changes   |
 | table-content-loader (App)  | upload/download data  |
 | Value Help (Popup) | Generate value help dialogs based on DDIC information    |
 | Transport Requests (Popup)| Display transport requests in a user-friendly way. |
-
-
-#### Features
-* Adjust Customizing entries with F4-Help Fixed Values and Search-Helps
-* Add Entries
-* Delete Entires
-* Transport Changes
 
 #### Compatibility:
 * BTP ABAP Environment (ABAP for Cloud)
