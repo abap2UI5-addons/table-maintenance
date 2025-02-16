@@ -1,27 +1,22 @@
 {
-    "global": {
-      "files": "/src/**/*.*"
-    },
-    "dependencies": [
+  "global": {
+    "files": "/../../src/**/*.*"
+  },
+  "dependencies": [
     {
-      "url": "https://github.com/abapedia/steampunk-2305-api-intersect-702",
+      "url": "https://github.com/open-abap/open-abap-core",
       "folder": "/deps",
       "files": "/src/**/*.*"
     },
     {
-      "url": "https://github.com/abap2UI5-addons/layout-variant-management",
-      "folder": "/abap2UI5-layout",
-      "files": "/src/**/*.*"
-    },
-    {
-      "url": "https://github.com/abap2UI5/abap2UI5",
+      "url": "https://github.com/abap2UI5/abap2UI5-downported",
       "folder": "/abap2UI5",
       "files": "/src/**/*.*"
     }
   ],
   "syntax": {
-    "version": "v750",
-    "errorNamespace": "^(Z|Y|LCL_|TY_|LIF_)"
+    "version": "v702",
+    "errorNamespace": "."
   },
   "rules": {
     "downport": true,
@@ -30,7 +25,6 @@
     "check_include": true,
     "check_syntax": true,
     "global_class": true,
-    "definitions_top": false,
     "implement_methods": true,
     "method_implemented_twice": true,
     "parser_error": true,

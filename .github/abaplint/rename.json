@@ -1,16 +1,11 @@
 {
-    "global": {
-      "files": "/src/**/*.*"
-    },
-    "dependencies": [
+  "global": {
+    "files": "/../../src/**/*.*"
+  },
+  "dependencies": [
     {
-      "url": "https://github.com/abapedia/steampunk-2305-api-intersect-702",
+      "url": "https://github.com/abapedia/steampunk-2305-api",
       "folder": "/deps",
-      "files": "/src/**/*.*"
-    },
-    {
-      "url": "https://github.com/abap2UI5-addons/layout-variant-management",
-      "folder": "/abap2UI5-layout",
       "files": "/src/**/*.*"
     },
     {
@@ -19,18 +14,35 @@
       "files": "/src/**/*.*"
     }
   ],
+  "rename": {
+    "output": "output",
+    "patterns": [
+      {
+        "type": "CLAS|INTF|TABL",
+        "oldName": "z2ui5_(.*)",
+        "newName": "zabap2ui5_$1"
+      }
+    ]
+  },
   "syntax": {
     "version": "v750",
-    "errorNamespace": "^(Z|Y|LCL_|TY_|LIF_)"
+    "errorNamespace": "."
   },
   "rules": {
-    "downport": true,
+    "allowed_object_types": {
+      "allowed": [
+        "CLAS",
+        "DEVC",
+        "INTF",
+        "TABL"
+      ]
+    },
+    "allowed_object_naming": true,
     "begin_end_names": true,
     "check_ddic": true,
     "check_include": true,
     "check_syntax": true,
     "global_class": true,
-    "definitions_top": false,
     "implement_methods": true,
     "method_implemented_twice": true,
     "parser_error": true,
