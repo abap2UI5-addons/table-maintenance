@@ -16,13 +16,11 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 * S/4 Private Cloud or On-Premise (ABAP for Cloud, Standard ABAP)
 * R/3 NetWeaver AS ABAP 7.50 or higher (Standard ABAP)
 
-
 #### Required Projects:
 * [layout-variant-management](https://github.com/abap2UI5-addons/layout-variant-management)
 
-
-#### TODO
-* Transports currently ony work in onPrem.
+#### Restrictions
+* Transports currently only work in On-Premise
 * Search-Help not yet running on Cloud Stack.
 
 #### Contribution & Support
