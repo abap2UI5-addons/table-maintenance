@@ -19,7 +19,7 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 #### Required Projects:
 * [layout-variant-management](https://github.com/abap2UI5-addons/layout-variant-management)
 
-#### Restrictions
+#### Limitations
 * Transports currently only work in On-Premise
 * Search-Help not yet running on Cloud Stack.
 
