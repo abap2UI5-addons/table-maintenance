@@ -17,10 +17,9 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 * Transport Requests Popup | Display transport requests in a user-friendly way
   
 #### Compatibility
-* BTP ABAP Environment (ABAP for Cloud)
-* S/4 Public Cloud ABAP Environment (ABAP for Cloud)
+* S/4 Public Cloud and BTP ABAP Environment (ABAP for Cloud)
 * S/4 Private Cloud or On-Premise (ABAP for Cloud, Standard ABAP)
-* R/3 NetWeaver AS ABAP 7.50 or higher (Standard ABAP)
+* R/3 NetWeaver AS ABAP 7.02 or higher (Standard ABAP)
 
 #### Dependencies
 * [layout-variant-management](https://github.com/abap2UI5-addons/layout-variant-management)
