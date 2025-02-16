@@ -4,16 +4,13 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 
 #### Content
 
-| App    | Description |
+| Function    | Description |
 | -------- | ------- |
-| SE16  | Display Data    |
-| SM30 | Edit Data   |
-| table-content-loader    | upload/download data  |
-
-| Popup    | Description |
-| -------- | ------- |
-| Value Help  | Generate value help dialogs based on DDIC information    |
-| Transport Requests | Display transport requests in a user-friendly way. |
+| SE16 (App) | Display Data    |
+| SM30 (App)| Edit Data   |
+| table-content-loader (App)  | upload/download data  |
+| Value Help (Popup) | Generate value help dialogs based on DDIC information    |
+| Transport Requests (Popup)| Display transport requests in a user-friendly way. |
 
 
 #### Features
