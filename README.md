@@ -36,5 +36,5 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 ###### SM30 Edit Entries
 <img width="700" alt="Google Chrome 2024-09-09 12 14 58" src="https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c">
 
-#### How to Contribute & Get Support
+#### Contribution & Support
 Pull requests are welcome! Whether you're fixing bugs, adding new functionality, or improving documentation, your contributions are highly appreciated. If you encounter any issues, feel free to open an issue.
