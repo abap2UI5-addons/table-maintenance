@@ -156,9 +156,13 @@ CLASS z2ui5_cl_ui_build_ranges IMPLEMENTATION.
         mo_sql->ms_sql-t_filter = z2ui5_cl_util=>filter_get_multi_by_data( <table> ).
       CATCH cx_sy_create_data_error.
         IF mo_sql->ms_sql-tabname IS INITIAL.
-          z2ui5_cl_util=>x_raise( |Table empty. Please enter a value.| ).
+          RAISE EXCEPTION TYPE z2ui5_cx_util_error
+            EXPORTING
+              val = |Table empty. Please enter a value.|.
         ELSE.
-          z2ui5_cl_util=>x_raise( |Table with Name { mo_sql->ms_sql-tabname } not found.| ).
+          RAISE EXCEPTION TYPE z2ui5_cx_util_error
+            EXPORTING
+              val = |Table with Name { mo_sql->ms_sql-tabname } not found.|.
         ENDIF.
     ENDTRY.
   ENDMETHOD.

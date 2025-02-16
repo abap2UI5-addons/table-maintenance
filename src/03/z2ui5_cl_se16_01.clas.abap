@@ -88,12 +88,12 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
   METHOD on_navigated.
 
     TRY.
-        DATA(lo_popup) = CAST z2ui5_cl_pop_to_sel_w_layout( client->get_app_prev( ) ).
+        DATA(lo_popup) = CAST z2ui5_cl_pop_layout_w_sel( client->get_app_prev( ) ).
         DATA(lo_layout) = lo_popup->result( ).
 
         IF lo_layout-check_confirmed = abap_true.
 
-          FIELD-SYMBOLS <layout> TYPE z2ui5_layo_t_01.
+          FIELD-SYMBOLS <layout> TYPE z2ui5_t_11.
           ASSIGN lo_layout-row->* TO <layout>.
 
           mo_ui_ranges->mo_sql->ms_sql-layout_name = <layout>-layout.

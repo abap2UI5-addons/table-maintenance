@@ -3,11 +3,12 @@ CLASS z2ui5_cl_util_sql DEFINITION PUBLIC.
 
     INTERFACES if_serializable_object.
 
-    TYPES: BEGIN OF t_go_button,
-             event_name TYPE string,
-             icon_name  TYPE string,
-             text       TYPE string,
-           END OF t_go_button.
+    TYPES:
+      BEGIN OF t_go_button,
+        event_name TYPE string,
+        icon_name  TYPE string,
+        text       TYPE string,
+      END OF t_go_button.
 
     CLASS-METHODS factory
       IMPORTING
