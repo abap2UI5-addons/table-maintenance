@@ -1,4 +1,4 @@
-## abap2UI5-table-maintenance
+## a2UI5-table-maintenance
 Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installation
 
 
