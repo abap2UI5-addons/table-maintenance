@@ -10,14 +10,13 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 #### Key Features
 * SE16 App | Display Data
 * SM30 App | Edit Data, Adjust Customizing entries with F4-Help Fixed Values and Search-Helps, Add Entries, Delete Entires, Transport Changes
-* table-content-loader App  | upload/download data 
 * Value Help Popup | Generate value help dialogs based on DDIC information
 * Transport Requests Popup | Display transport requests in a user-friendly way
   
 #### Compatibility
 * S/4 Public Cloud and BTP ABAP Environment (ABAP for Cloud)
 * S/4 Private Cloud or On-Premise (ABAP for Cloud, Standard ABAP)
-* R/3 NetWeaver AS ABAP 7.02 or higher (Standard ABAP)
+* R/3 NetWeaver AS ABAP 7.50 or higher (Standard ABAP)
 
 #### Dependencies
 * [abap2UI5](https://github.com/abap2UI5/abap2UI5)
