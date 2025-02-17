@@ -48,7 +48,7 @@ CLASS z2ui5_cl_se16_02 IMPLEMENTATION.
                      floatingfooter = abap_true
                      shownavbutton  = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL ) ).
 
-    z2ui5_cl_xml_builder=>xml_build_table( i_data   = mo_sql->ms_sql-t_ref
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = mo_sql->ms_sql-t_ref
                                            i_xml    = page
                                            i_client = client
                                            i_layout = mo_layout ).
