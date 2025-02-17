@@ -505,14 +505,14 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
             DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
 
-            SELECT SINGLE funcname
-              FROM ZSM30_V_TFDIR
-              WHERE funcname = @conv
-              INTO @DATA(conex).
+*            SELECT SINGLE funcname
+*              FROM ZSM30_V_TFDIR
+*              WHERE funcname = @conv
+*              INTO @DATA(conex).
 
-            IF sy-subrc = 0.
+*            IF sy-subrc = 0.
 
-              CALL FUNCTION conex
+              CALL FUNCTION conv
                 EXPORTING  input  = <value_struc>
                 IMPORTING  output = <value_tab>
                 EXCEPTIONS OTHERS = 99.
@@ -520,7 +520,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
               ENDIF.
 
-            ENDIF.
+*            ENDIF.
 
           CATCH cx_root.
             <value_tab> = <value_struc>.
@@ -784,10 +784,10 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
   METHOD get_view_settings.
 
-            SELECT *
-              FROM ZSM30_V_DD27S
-              WHERE viewname = @mv_tabname
-              INTO table @DATA(dd07s).
+*            SELECT *
+*              FROM ZSM30_V_DD27S
+*              WHERE viewname = @mv_tabname
+*              INTO table @DATA(dd07s).
 
   ENDMETHOD.
 
