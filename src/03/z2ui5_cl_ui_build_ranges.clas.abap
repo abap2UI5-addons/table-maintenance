@@ -7,8 +7,20 @@ CLASS z2ui5_cl_ui_build_ranges DEFINITION
 
     INTERFACES if_serializable_object.
 
-    DATA mo_sql    TYPE REF TO z2ui5_cl_util_sql.
-    DATA mo_layout TYPE REF TO z2ui5_cl_layout.
+    TYPES:
+      BEGIN OF t_go_button,
+        event_name TYPE string,
+        icon_name  TYPE string,
+        text       TYPE string,
+      END OF t_go_button.
+
+    DATA mo_sql    TYPE REF TO z2ui5_cl_layo_var_sql.
+    DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
+
+
+    CLASS-METHODS go_button
+      RETURNING
+        VALUE(r_val) TYPE t_go_button.
 
     METHODS paint
       IMPORTING
@@ -34,6 +46,14 @@ ENDCLASS.
 
 
 CLASS z2ui5_cl_ui_build_ranges IMPLEMENTATION.
+
+  METHOD go_button.
+
+    r_val = VALUE #( event_name = `GO`
+                     icon_name = `sap-icon://simulate`
+                     text = 'Go'(001) ).
+
+  ENDMETHOD.
 
   METHOD on_event.
 
@@ -85,9 +105,9 @@ CLASS z2ui5_cl_ui_build_ranges IMPLEMENTATION.
                     width = '30%'
                     submit = client->_event( `SELSCREEN_POST` )
                 )->button(
-                    press = client->_event( z2ui5_cl_util_sql=>go_button( )-event_name )
-                    icon = z2ui5_cl_util_sql=>go_button( )-icon_name
-                    tooltip = z2ui5_cl_util_sql=>go_button( )-text
+                    press = client->_event( go_button( )-event_name )
+                    icon = go_button( )-icon_name
+                    tooltip = go_button( )-text
              )->input(
              width = '10%'
                     value = client->_bind_edit( mo_sql->ms_sql-count )
@@ -189,7 +209,7 @@ CLASS z2ui5_cl_ui_build_ranges IMPLEMENTATION.
 
     DATA lr_table TYPE REF TO data.
     CREATE DATA lr_table TYPE TABLE OF spfli.
-    mo_layout = z2ui5_cl_layout=>factory( control  = z2ui5_cl_layout=>m_table
+    mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                           data     = lr_table
                                           handle01 = 'Z2UI5_CL_SE16'
                                           handle02 = mo_sql->ms_sql-tabname

@@ -24,12 +24,12 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
     CASE client->get( )-event.
 
       WHEN 'DISPLAY_POPUP_SELECT_LAYOUT'.
-        client->nav_app_call( z2ui5_cl_layout=>choose_layout( handle01 = 'ZSE16'
+        client->nav_app_call( z2ui5_cl_layo_manager=>choose_layout( handle01 = 'ZSE16'
                                                               handle02 = mo_ui_ranges->mo_sql->ms_sql-tabname ) ).
 
       WHEN 'GO'.
         DATA(lo_tab_output) = NEW z2ui5_cl_se16_02( ).
-        lo_tab_output->mo_sql = z2ui5_cl_util_sql=>factory( mo_ui_ranges->mo_sql->ms_sql ).
+        lo_tab_output->mo_sql = z2ui5_cl_layo_var_sql=>factory( mo_ui_ranges->mo_sql->ms_sql ).
         client->nav_app_call( lo_tab_output ).
 
       WHEN 'BACK'.
@@ -59,9 +59,9 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
 
     page->footer( )->overflow_toolbar(
         )->toolbar_spacer(
-        )->button( text  = z2ui5_cl_util_sql=>go_button( )-text
+        )->button( text  = z2ui5_cl_ui_build_ranges=>go_button( )-text
                    type  = `Emphasized`
-                   press = client->_event( z2ui5_cl_util_sql=>go_button( )-event_name ) ).
+                   press = client->_event( z2ui5_cl_ui_build_ranges=>go_button( )-event_name ) ).
 
     client->view_display( view->stringify( ) ).
 
@@ -88,7 +88,7 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
   METHOD on_navigated.
 
     TRY.
-        DATA(lo_popup) = CAST z2ui5_cl_pop_layout_w_sel( client->get_app_prev( ) ).
+        DATA(lo_popup) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) ).
         DATA(lo_layout) = lo_popup->result( ).
 
         IF lo_layout-check_confirmed = abap_true.
@@ -126,7 +126,7 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
     mo_ui_ranges->mo_sql->ms_sql-count   = `500`.
 
     CREATE DATA lr_table TYPE TABLE OF spfli.
-    mo_ui_ranges->mo_layout = z2ui5_cl_layout=>factory( control  = z2ui5_cl_layout=>m_table
+    mo_ui_ranges->mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                           data     = lr_table
                                           handle01 = 'Z2UI5_CL_SE16'
                                           handle02 = mo_ui_ranges->mo_sql->ms_sql-tabname

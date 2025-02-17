@@ -8,7 +8,7 @@ CLASS zsm30_cl_app_01a DEFINITION
 
     DATA ms_fixval   TYPE REF TO data.
     DATA ms_data_row TYPE REF TO data.
-    DATA mo_layout   TYPE REF TO z2ui5_cl_layout. " Importing
+    DATA mo_layout   TYPE REF TO z2ui5_cl_layo_manager. " Importing
     DATA mt_data     TYPE REF TO data.
     DATA mt_data_tmp TYPE REF TO data.
 
@@ -17,7 +17,7 @@ CLASS zsm30_cl_app_01a DEFINITION
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_util=>ty_t_dfies
-        io_layout     TYPE REF TO z2ui5_cl_layout " z2ui5_cl_pop_display_layout=>ty_s_layout
+        io_layout     TYPE REF TO z2ui5_cl_layo_manager " z2ui5_cl_pop_display_layout=>ty_s_layout
         iv_edit_mode  TYPE abap_bool
         iv_tabname    TYPE string
       RETURNING

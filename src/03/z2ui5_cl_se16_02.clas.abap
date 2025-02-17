@@ -3,9 +3,9 @@ CLASS z2ui5_cl_se16_02 DEFINITION PUBLIC.
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    DATA mo_sql     TYPE REF TO z2ui5_cl_util_sql.
-    DATA mo_variant TYPE REF TO z2ui5add_cl_var_db_api.
-    DATA mo_layout  TYPE REF TO z2ui5_cl_layout.
+    DATA mo_sql     TYPE REF TO z2ui5_cl_layo_var_sql.
+    DATA mo_variant TYPE REF TO z2ui5_cl_layo_var_db.
+    DATA mo_layout  TYPE REF TO z2ui5_cl_layo_manager.
 
   PROTECTED SECTION.
     DATA client               TYPE REF TO z2ui5_if_client.
@@ -31,7 +31,7 @@ CLASS z2ui5_cl_se16_02 IMPLEMENTATION.
       WHEN 'BACK'.
         client->nav_app_leave( ).
       WHEN OTHERS.
-        z2ui5_cl_pop_layout=>on_event_layout( client = client
+        z2ui5_cl_layo_pop=>on_event_layout( client = client
                                                       layout = mo_layout ).
     ENDCASE.
 
@@ -96,7 +96,7 @@ CLASS z2ui5_cl_se16_02 IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_pop_layout( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
         mo_layout = app->mo_layout.
 
         IF app->mv_rerender = abap_true.
@@ -114,7 +114,7 @@ CLASS z2ui5_cl_se16_02 IMPLEMENTATION.
   METHOD on_init.
 
     IF mo_sql IS NOT BOUND.
-      mo_sql = z2ui5_cl_util_sql=>factory( ).
+      mo_sql = z2ui5_cl_layo_var_sql=>factory( ).
       mo_sql->ms_sql-tabname = 'USR01'.
     ENDIF.
 
@@ -124,14 +124,14 @@ CLASS z2ui5_cl_se16_02 IMPLEMENTATION.
 
       IF mo_sql->ms_sql-layout_id IS INITIAL.
 
-        mo_layout = z2ui5_cl_layout=>factory( control  = z2ui5_cl_layout=>m_table
+        mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                               data     = mo_sql->ms_sql-t_ref
                                               handle01 = 'ZSE16'
                                               handle02 = mo_sql->ms_sql-tabname
                                               handle03 = ''
                                               handle04 = '' ).
       ELSE.
-        mo_layout = z2ui5_cl_layout=>factory_by_guid( layout_guid = mo_sql->ms_sql-layout_id ).
+        mo_layout = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = mo_sql->ms_sql-layout_id ).
       ENDIF.
 
     ENDIF.

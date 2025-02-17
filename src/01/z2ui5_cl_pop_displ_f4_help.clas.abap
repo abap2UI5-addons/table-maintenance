@@ -8,7 +8,7 @@ CLASS z2ui5_cl_pop_displ_f4_help DEFINITION
 
     DATA mt_data         TYPE REF TO data.
     DATA ms_data_row     TYPE REF TO data.
-    DATA mo_layout       TYPE REF TO z2ui5_cl_layout.
+    DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
 
     DATA mv_table        TYPE string.
     DATA mv_field        TYPE string.
@@ -255,7 +255,7 @@ CLASS z2ui5_cl_pop_displ_f4_help IMPLEMENTATION.
                  )->toolbar_spacer( ).
 
 
-    headder = z2ui5_cl_pop_layout=>render_layout_function(
+    headder = z2ui5_cl_layo_pop=>render_layout_function(
                 xml    = headder
                 client = client
                 layout = mo_layout
@@ -342,7 +342,7 @@ CLASS z2ui5_cl_pop_displ_f4_help IMPLEMENTATION.
 
       WHEN OTHERS.
 
-        z2ui5_cl_pop_layout=>on_event_layout( client = client
+        z2ui5_cl_layo_pop=>on_event_layout( client = client
                                                       layout = mo_layout ).
 
     ENDCASE.
@@ -445,7 +445,7 @@ CLASS z2ui5_cl_pop_displ_f4_help IMPLEMENTATION.
 
     TRY.
         " War es das Layout?
-        DATA(app) = CAST z2ui5_cl_pop_layout( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         mo_layout = app->mo_layout.
 
@@ -462,7 +462,7 @@ CLASS z2ui5_cl_pop_displ_f4_help IMPLEMENTATION.
     class = cl_abap_classdescr=>get_class_name( me ).
     SHIFT class LEFT DELETING LEADING '\CLASS='.
 
-    mo_layout = z2ui5_cl_layout=>factory( control  = z2ui5_cl_layout=>m_table
+    mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                               data     = mt_data
                                               handle01 = class
                                               handle02 = mv_table

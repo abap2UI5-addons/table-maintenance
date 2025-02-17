@@ -5,7 +5,7 @@ CLASS zsm30_cl_app_01 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    DATA mo_layout        TYPE REF TO z2ui5_cl_layout.
+    DATA mo_layout        TYPE REF TO z2ui5_cl_layo_manager.
     DATA mv_search_value  TYPE string.
     DATA mt_table         TYPE REF TO data.
     DATA mv_change_active TYPE abap_bool.
@@ -466,7 +466,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     CHECK mt_table IS BOUND.
 
-    z2ui5_cl_xml_builder=>xml_build_table( i_data         = mt_table
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mt_table
                                            i_search_value = REF #(  mv_search_value )
                                            i_xml          = page
                                            i_client       = client
@@ -693,7 +693,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_layout.
-    z2ui5_cl_pop_layout=>on_event_layout( client = client
+    z2ui5_cl_layo_pop=>on_event_layout( client = client
                                                   layout = mo_layout ).
   ENDMETHOD.
 
@@ -706,7 +706,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_pop_layout( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         mo_layout->ms_layout = app->mo_layout->ms_layout.
 
@@ -729,11 +729,11 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 *    DATA(lgnum) = ZSM30_cl_parameter_helper=>get_parameter_id( '/SCWM/LGN'  ).
 
     IF mv_multi_edit = abap_false.
-      DATA(control) = z2ui5_cl_layout=>m_table.
+      DATA(control) = z2ui5_cl_layo_manager=>m_table.
     ELSE.
-      control = z2ui5_cl_layout=>ui_table.
+      control = z2ui5_cl_layo_manager=>ui_table.
     ENDIF.
-    mo_layout = z2ui5_cl_layout=>factory( control  = control
+    mo_layout = z2ui5_cl_layo_manager=>factory( control  = control
                                           data     = mt_table
                                           handle01 = class
                                           handle02 = mv_table
@@ -804,7 +804,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
 
-    toolbar = z2ui5_cl_pop_layout=>render_layout_function( xml    = toolbar
+    toolbar = z2ui5_cl_layo_pop=>render_layout_function( xml    = toolbar
                                                                    client = client
                                                                    layout = mo_layout ).
 
