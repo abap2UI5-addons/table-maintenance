@@ -125,7 +125,7 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
     mo_ui_ranges->mo_sql->ms_sql-tabname = `USR01`.
     mo_ui_ranges->mo_sql->ms_sql-count   = `500`.
 
-    CREATE DATA lr_table TYPE TABLE OF spfli.
+    lr_table = z2ui5_cl_util=>rtti_create_tab_by_name( `T100` ).
     mo_ui_ranges->mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                           data     = lr_table
                                           handle01 = 'Z2UI5_CL_SE16'

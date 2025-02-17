@@ -208,7 +208,7 @@ CLASS z2ui5_cl_ui_build_ranges IMPLEMENTATION.
     mo_sql->ms_sql-layout_name = ``.
 
     DATA lr_table TYPE REF TO data.
-    CREATE DATA lr_table TYPE TABLE OF spfli.
+    lr_table = z2ui5_cl_util=>rtti_create_tab_by_name( `T100` ).
     mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                           data     = lr_table
                                           handle01 = 'Z2UI5_CL_SE16'
