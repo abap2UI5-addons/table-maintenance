@@ -1,9 +1,7 @@
-[![ABAP_702](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_702.yaml/badge.svg?branch=702)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_702.yaml)
 [![ABAP_STANDARD](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_STANDARD.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_STANDARD.yaml)
 [![ABAP_CLOUD](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_CLOUD.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_CLOUD.yaml)
 <br>
-[![auto_downporting](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_downporting.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_downporting.yaml)
-[![auto_renaming](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_renaming.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_renaming.yaml)
+[![auto_rename](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_rename.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_rename.yaml)
 
 
 # table-maintenance
