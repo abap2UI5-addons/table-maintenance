@@ -1,9 +1,8 @@
-CLASS z2ui5_cl_pop_show_value_help DEFINITION
+CLASS z2ui5_cl_tm_pop_value_help DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
 
     DATA mt_data         TYPE REF TO data.
@@ -23,7 +22,7 @@ CLASS z2ui5_cl_pop_show_value_help DEFINITION
         i_fname       TYPE string
         i_value       TYPE string
       RETURNING
-        VALUE(result) TYPE REF TO z2ui5_cl_pop_show_value_help.
+        VALUE(result) TYPE REF TO z2ui5_cl_tm_pop_value_help.
 
 
   PROTECTED SECTION.
@@ -66,7 +65,7 @@ CLASS z2ui5_cl_pop_show_value_help DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_pop_show_value_help IMPLEMENTATION.
+CLASS z2ui5_cl_tm_pop_value_help IMPLEMENTATION.
 
   METHOD z2ui5_if_app~main.
 

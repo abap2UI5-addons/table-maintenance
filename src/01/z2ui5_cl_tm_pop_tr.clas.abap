@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_pop_show_tr DEFINITION
+CLASS z2ui5_cl_tm_pop_tr DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
@@ -23,7 +23,7 @@ CLASS z2ui5_cl_pop_show_tr DEFINITION
 
     CLASS-METHODS factory
       RETURNING
-        VALUE(result) TYPE REF TO z2ui5_cl_pop_show_tr.
+        VALUE(result) TYPE REF TO z2ui5_cl_tm_pop_tr.
 
     CLASS-METHODS add_DATA_to_tranport
       IMPORTING
@@ -75,7 +75,7 @@ CLASS z2ui5_cl_pop_show_tr DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_pop_show_tr IMPLEMENTATION.
+CLASS z2ui5_cl_tm_pop_tr IMPLEMENTATION.
 
   METHOD z2ui5_if_app~main.
     me->client = client.

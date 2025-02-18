@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>Z2UI5_CL_SE16_02</CLSNAME>
+    <CLSNAME>Z2UI5_CL_TM_SM30_02</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>se16 - table display</DESCRIPT>
+    <DESCRIPT>Edit/Add Popup</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

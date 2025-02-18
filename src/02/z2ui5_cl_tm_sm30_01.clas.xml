@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>Z2UI5_CL_SM30_01</CLSNAME>
+    <CLSNAME>Z2UI5_CL_TM_SM30_01</CLSNAME>
     <LANGU>E</LANGU>
     <DESCRIPT>Simple SM30 like View for Cloud</DESCRIPT>
     <STATE>1</STATE>

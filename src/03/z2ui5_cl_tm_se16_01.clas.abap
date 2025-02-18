@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_se16_01 DEFINITION PUBLIC.
+CLASS z2ui5_cl_tm_se16_01 DEFINITION PUBLIC.
 
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
@@ -17,7 +17,7 @@ CLASS z2ui5_cl_se16_01 DEFINITION PUBLIC.
 ENDCLASS.
 
 
-CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
+CLASS z2ui5_cl_tm_se16_01 IMPLEMENTATION.
 
   METHOD on_event.
 
@@ -28,7 +28,7 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
                                                               handle02 = mo_ui_ranges->mo_sql->ms_sql-tabname ) ).
 
       WHEN 'GO'.
-        DATA(lo_tab_output) = NEW z2ui5_cl_se16_02( ).
+        DATA(lo_tab_output) = NEW z2ui5_cl_tm_se16_02( ).
         lo_tab_output->mo_sql = z2ui5_cl_layo_var_sql=>factory( mo_ui_ranges->mo_sql->ms_sql ).
         client->nav_app_call( lo_tab_output ).
 
@@ -106,7 +106,7 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
     ENDTRY.
 
     TRY.
-        CAST z2ui5_cl_se16_02( client->get_app_prev( ) ).
+        CAST z2ui5_cl_tm_se16_02( client->get_app_prev( ) ).
         view_display( ).
         RETURN.
       CATCH cx_root.

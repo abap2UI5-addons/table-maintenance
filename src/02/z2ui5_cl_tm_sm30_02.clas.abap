@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sm30_02 DEFINITION
+CLASS z2ui5_cl_tm_sm30_02 DEFINITION
   PUBLIC
   CREATE PUBLIC.
 
@@ -21,7 +21,7 @@ CLASS z2ui5_cl_sm30_02 DEFINITION
         iv_edit_mode  TYPE abap_bool
         iv_tabname    TYPE string
       RETURNING
-        VALUE(result) TYPE REF TO z2ui5_cl_sm30_02.
+        VALUE(result) TYPE REF TO z2ui5_cl_tm_sm30_02.
 
   PROTECTED SECTION.
 
@@ -88,7 +88,7 @@ CLASS z2ui5_cl_sm30_02 DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sm30_02 IMPLEMENTATION.
+CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
   METHOD z2ui5_if_app~main.
 
