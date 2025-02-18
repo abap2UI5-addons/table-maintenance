@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>Z2UI5_CL_POPUP_SHOW_TR</CLSNAME>
+    <CLSNAME>Z2UI5_CL_POP_SHOW_TR</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>Display Transport Requests</DESCRIPT>
+    <DESCRIPT>transport requests - popup</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

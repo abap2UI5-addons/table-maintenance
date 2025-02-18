@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>Z2UI5_CL_SAMPLE_F4_HELP</CLSNAME>
+    <CLSNAME>Z2UI5_CL_POP_SAMPLE_01</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>sample f4 help</DESCRIPT>
+    <DESCRIPT>sample - value help popup</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

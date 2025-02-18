@@ -1,4 +1,4 @@
-CLASS zsm30_cl_app_01a DEFINITION
+CLASS z2ui5_cl_sm30_02 DEFINITION
   PUBLIC
   CREATE PUBLIC.
 
@@ -21,7 +21,7 @@ CLASS zsm30_cl_app_01a DEFINITION
         iv_edit_mode  TYPE abap_bool
         iv_tabname    TYPE string
       RETURNING
-        VALUE(result) TYPE REF TO zsm30_cl_app_01a.
+        VALUE(result) TYPE REF TO z2ui5_cl_sm30_02.
 
   PROTECTED SECTION.
 
@@ -88,7 +88,7 @@ CLASS zsm30_cl_app_01a DEFINITION
 ENDCLASS.
 
 
-CLASS zsm30_cl_app_01a IMPLEMENTATION.
+CLASS z2ui5_cl_sm30_02 IMPLEMENTATION.
 
   METHOD z2ui5_if_app~main.
 
@@ -601,7 +601,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
-    client->nav_app_call( z2ui5_cl_pop_displ_f4_help=>factory( i_table = mv_tabname
+    client->nav_app_call( z2ui5_cl_pop_show_value_help=>factory( i_table = mv_tabname
                                                                i_fname = mv_f4_fname
                                                                i_value = CONV #( <value_struc> ) ) ).
 
@@ -700,7 +700,7 @@ CLASS zsm30_cl_app_01a IMPLEMENTATION.
 
     TRY.
         " War es die F4 Hilfe?
-        DATA(app) = CAST z2ui5_cl_pop_displ_f4_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_pop_show_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 

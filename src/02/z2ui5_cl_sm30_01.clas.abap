@@ -1,4 +1,4 @@
-CLASS zsm30_cl_app_01 DEFINITION
+CLASS z2ui5_cl_sm30_01 DEFINITION
   PUBLIC
   CREATE PUBLIC.
 
@@ -29,7 +29,7 @@ CLASS zsm30_cl_app_01 DEFINITION
     DATA check_initialized TYPE abap_bool.
     DATA mv_f4_fname       TYPE string.
     DATA mv_shlpfield      TYPE string.
-    DATA ms_transport      TYPE z2ui5_cl_popup_show_tr=>ty_s_data.
+    DATA ms_transport      TYPE z2ui5_cl_pop_show_tr=>ty_s_data.
     DATA mv_transport      TYPE string.
     DATA mv_multi_edit     TYPE abap_bool.
     DATA mv_key_error      TYPE abap_bool.
@@ -101,7 +101,7 @@ CLASS zsm30_cl_app_01 DEFINITION
 ENDCLASS.
 
 
-CLASS zsm30_cl_app_01 IMPLEMENTATION.
+CLASS z2ui5_cl_sm30_01 IMPLEMENTATION.
 
   METHOD get_txt.
 
@@ -136,7 +136,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     IF ms_transport IS INITIAL.
 
       mv_ucomm_tmp = client->get( )-event.
-      client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
+      client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
 
     ELSE.
 
@@ -197,11 +197,11 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
       ENDTRY.
 
-      z2ui5_cl_popup_show_tr=>add_DATA_to_tranport( ir_data      = t_table
+      z2ui5_cl_pop_show_tr=>add_DATA_to_tranport( ir_data      = t_table
                                                     iv_tabname   = mv_table
                                                     is_transport = ms_transport ).
 
-      z2ui5_cl_popup_show_tr=>add_DATA_to_tranport( ir_data      = t_table_del
+      z2ui5_cl_pop_show_tr=>add_DATA_to_tranport( ir_data      = t_table_del
                                                     iv_tabname   = mv_table
                                                     is_transport = ms_transport ).
 
@@ -274,7 +274,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     IF ms_transport IS INITIAL.
 
       mv_ucomm_tmp = client->get( )-event.
-      client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
+      client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
 
     ELSE.
 
@@ -305,11 +305,11 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
       ENDTRY.
 
-      z2ui5_cl_popup_show_tr=>add_DATA_to_tranport( ir_data      = t_table
+      z2ui5_cl_pop_show_tr=>add_DATA_to_tranport( ir_data      = t_table
                                                     iv_tabname   = mv_table
                                                     is_transport = ms_transport ).
 
-      z2ui5_cl_popup_show_tr=>add_DATA_to_tranport( ir_data      = t_table_del
+      z2ui5_cl_pop_show_tr=>add_DATA_to_tranport( ir_data      = t_table_del
                                                     iv_tabname   = mv_table
                                                     is_transport = ms_transport ).
 
@@ -546,7 +546,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
+    client->nav_app_call( z2ui5_cl_sm30_02=>factory( io_table     = mt_table
                                                      iv_row_id    = ls_arg
                                                      it_dfies     = mt_dfies
                                                      io_layout    = mo_layout
@@ -660,7 +660,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
       WHEN 'BUTTON_ADD'.
 
-        client->nav_app_call( ZSM30_cl_app_01a=>factory( io_table     = mt_table
+        client->nav_app_call( z2ui5_cl_sm30_02=>factory( io_table     = mt_table
                                                          iv_row_id    = ``
                                                          it_dfies     = mt_dfies
                                                          io_layout    = mo_layout
@@ -749,7 +749,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
 
     TRY.
         " War es das Layout?
-        DATA(app) = CAST z2ui5_cl_popup_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_pop_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         ms_transport = app->ms_transport.
 
@@ -784,7 +784,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
       WHEN 'TRANSPORT_CHANGE'.
 
         mv_ucomm_tmp = client->get( )-event.
-        client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
+        client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
 
     ENDCASE.
 
@@ -937,7 +937,7 @@ CLASS zsm30_cl_app_01 IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(app) = CAST ZSM30_cl_app_01a( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_sm30_02( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         ASSIGN app->mt_data->* TO FIELD-SYMBOL(<data>).
         ASSIGN mt_table->* TO FIELD-SYMBOL(<table>).

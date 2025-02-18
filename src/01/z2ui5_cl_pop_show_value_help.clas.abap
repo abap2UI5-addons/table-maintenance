@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_pop_displ_f4_help DEFINITION
+CLASS z2ui5_cl_pop_show_value_help DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
@@ -23,7 +23,7 @@ CLASS z2ui5_cl_pop_displ_f4_help DEFINITION
         i_fname       TYPE string
         i_value       TYPE string
       RETURNING
-        VALUE(result) TYPE REF TO z2ui5_cl_pop_displ_f4_help.
+        VALUE(result) TYPE REF TO z2ui5_cl_pop_show_value_help.
 
 
   PROTECTED SECTION.
@@ -66,7 +66,7 @@ CLASS z2ui5_cl_pop_displ_f4_help DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_pop_displ_f4_help IMPLEMENTATION.
+CLASS z2ui5_cl_pop_show_value_help IMPLEMENTATION.
 
   METHOD z2ui5_if_app~main.
 

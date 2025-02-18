@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sample_f4_help DEFINITION
+CLASS z2ui5_cl_pop_sample_01 DEFINITION
   PUBLIC
   CREATE PUBLIC.
 
@@ -22,7 +22,7 @@ CLASS z2ui5_cl_sample_f4_help DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sample_f4_help IMPLEMENTATION.
+CLASS z2ui5_cl_pop_sample_01 IMPLEMENTATION.
 
   METHOD on_event.
 
@@ -88,7 +88,7 @@ CLASS z2ui5_cl_sample_f4_help IMPLEMENTATION.
     DATA(f4_field) = VALUE string( lt_arg[ 1 ] ).
     DATA(f4_table) = VALUE string( lt_arg[ 2 ] ).
 
-    client->nav_app_call( z2ui5_cl_pop_displ_f4_help=>factory( i_table = f4_table
+    client->nav_app_call( z2ui5_cl_pop_show_value_help=>factory( i_table = f4_table
                                                          i_fname = f4_field
                                                          i_value = mv_arbgb ) ).
 
@@ -101,7 +101,7 @@ CLASS z2ui5_cl_sample_f4_help IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(app) = CAST z2ui5_cl_pop_displ_f4_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_pop_show_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 

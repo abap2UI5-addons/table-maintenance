@@ -3,7 +3,7 @@ CLASS z2ui5_cl_se16_01 DEFINITION PUBLIC.
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    DATA mo_ui_ranges TYPE REF TO z2ui5_cl_ui_build_ranges.
+    DATA mo_ui_ranges TYPE REF TO z2ui5_cl_layo_var_ui.
 
   PROTECTED SECTION.
     DATA client TYPE REF TO z2ui5_if_client.
@@ -59,9 +59,9 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
 
     page->footer( )->overflow_toolbar(
         )->toolbar_spacer(
-        )->button( text  = z2ui5_cl_ui_build_ranges=>go_button( )-text
+        )->button( text  = z2ui5_cl_layo_var_ui=>go_button( )-text
                    type  = `Emphasized`
-                   press = client->_event( z2ui5_cl_ui_build_ranges=>go_button( )-event_name ) ).
+                   press = client->_event( z2ui5_cl_layo_var_ui=>go_button( )-event_name ) ).
 
     client->view_display( view->stringify( ) ).
 
@@ -120,7 +120,7 @@ CLASS z2ui5_cl_se16_01 IMPLEMENTATION.
 
     DATA lr_table TYPE REF TO data.
 
-    mo_ui_ranges = NEW z2ui5_cl_ui_build_ranges( ).
+    mo_ui_ranges = NEW z2ui5_cl_layo_var_ui( ).
     mo_ui_ranges->mo_sql = NEW #( ).
     mo_ui_ranges->mo_sql->ms_sql-tabname = `USR01`.
     mo_ui_ranges->mo_sql->ms_sql-count   = `500`.
