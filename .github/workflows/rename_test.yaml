@@ -1,4 +1,4 @@
-name: auto_rename
+name: rename_test
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  auto_rename:
+  rename_test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
