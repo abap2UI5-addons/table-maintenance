@@ -1,7 +1,7 @@
 [![ABAP_STANDARD](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_STANDARD.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_STANDARD.yaml)
 [![ABAP_CLOUD](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_CLOUD.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_CLOUD.yaml)
 <br>
-[![auto_rename](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_rename.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/auto_rename.yaml)
+[![auto_rename](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/rename_test.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/rename_test.yaml)
 
 
 # table-maintenance
