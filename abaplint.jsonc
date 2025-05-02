@@ -9,13 +9,18 @@
       "files": "/src/**/*.*"
     },
     {
-      "url": "https://github.com/abap2UI5-addons/layout-variant-management",
+      "url": "https://github.com/abap2UI5-addons/layout-management",
       "folder": "/abap2UI5-layout",
       "files": "/src/**/*.*"
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
       "folder": "/abap2UI5",
+      "files": "/src/**/*.*"
+    },
+    {
+      "url": "https://github.com/abap2UI5-addons/popups",
+      "folder": "/popups",
       "files": "/src/**/*.*"
     }
   ],
