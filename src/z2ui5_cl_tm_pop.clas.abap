@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_tm_sm30_02 DEFINITION
+CLASS z2ui5_cl_tm_pop DEFINITION
   PUBLIC
   CREATE PUBLIC.
 
@@ -17,19 +17,19 @@ CLASS z2ui5_cl_tm_sm30_02 DEFINITION
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_util=>ty_t_dfies
-        io_layout     TYPE REF TO z2ui5_cl_layo_manager " z2ui5_cl_pop_display_layout=>ty_s_layout
+        is_layout     TYPE REF TO z2ui5_cl_layo_manager
         iv_edit_mode  TYPE abap_bool
+        iv_copy_mode  TYPE abap_bool OPTIONAL
         iv_tabname    TYPE string
       RETURNING
-        VALUE(result) TYPE REF TO z2ui5_cl_tm_sm30_02.
+        VALUE(result) TYPE REF TO z2ui5_cl_tm_pop.
 
   PROTECTED SECTION.
-
-
     DATA client       TYPE REF TO z2ui5_if_client.
 
     DATA mv_init      TYPE abap_bool.
     DATA mv_edit      TYPE abap_bool.
+    DATA mv_copy      TYPE abap_bool.
 
     DATA mv_row_id    TYPE string.
     DATA mv_f4_fname  TYPE string.
@@ -80,15 +80,15 @@ CLASS z2ui5_cl_tm_sm30_02 DEFINITION
     METHODS table_to_row.
     METHODS on_after_shlp.
     METHODS on_after_f4.
-    METHODS Copy_table_line.
-        METHODS get_view_settings.
+    METHODS copy_table_line.
+    METHODS get_view_settings.
 
   PRIVATE SECTION.
 
 ENDCLASS.
 
 
-CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
+CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   METHOD z2ui5_if_app~main.
 
@@ -128,15 +128,24 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     ASSIGN mt_data->* TO <tab>.
 
-    ASSIGN <tab>[ mv_row_id ] TO FIELD-SYMBOL(<row>).
+    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-    IF sy-subrc <> 0.
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
+      IF <row_id> IS ASSIGNED.
+        IF <row_id> = mv_row_id.
+          EXIT.
+        ENDIF.
+      ENDIF.
+
+    ENDLOOP.
+
+    IF <line> IS NOT ASSIGNED.
       RETURN.
     ENDIF.
 
     LOOP AT mt_dfies INTO DATA(dfies).
 
-      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_tab>).
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO FIELD-SYMBOL(<value_tab>).
       ASSIGN ms_data_row->* TO <table_row>.
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <table_row> TO FIELD-SYMBOL(<value_struc>).
 
@@ -145,6 +154,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
       ENDIF.
 
     ENDLOOP.
+
   ENDMETHOD.
 
   METHOD render_popup.
@@ -154,15 +164,15 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     DATA(popup) = z2ui5_cl_xml_view=>factory_popup( ).
 
-    DATA(title) = COND #( WHEN mv_edit = abap_true THEN 'Edit' ELSE 'Add' ).
+    DATA(title) = COND #( WHEN mv_edit = abap_true THEN get_txt( 'CRMST_UIU_EDIT' ) ELSE get_txt( 'RSLPO_GUI_ADDPART' ) ).
 
     DATA(simple_form) = popup->dialog( title        = title
                                        contentwidth = '60%'
                                        afterclose   = client->_event( 'POPUP_CLOSE' )
-           )->simple_form( title    = ''
-                           layout   = 'ResponsiveGridLayout'
-                           editable = abap_true
-           )->content( ns = 'form' ).
+          )->simple_form( title    = ''
+                          layout   = 'ResponsiveGridLayout'
+                          editable = abap_true
+          )->content( ns = 'form' ).
 
     " Gehe über alle Comps wenn wir im Edit sind dann sind keyfelder nicht eingabebereit.
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies).
@@ -179,7 +189,10 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
+*      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
+
+      DATA(text) = z2ui5_cl_util=>rtti_get_data_element_texts(
+                       CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
       simple_form->label( design = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' )
                           text   = text ).
@@ -202,15 +215,15 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
                             valuehelprequest = client->_event( val   = 'CALL_POPUP_F4'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
-*      ELSEIF dfies->mac IS NOT INITIAL.
-*
-*        simple_form->input( value            = client->_bind_edit( <val> )
-*                            showvaluehelp    = abap_true
-*                            enabled          = enabled
-*                            type             = type
-*                            maxlength        = dfies->leng
-*                            valuehelprequest = client->_event( val   = 'CALL_POPUP_SHLP'
-*                                                               t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
+      ELSEIF dfies->mac IS NOT INITIAL.
+
+        simple_form->input( value            = client->_bind_edit( <val> )
+                            showvaluehelp    = abap_true
+                            enabled          = enabled
+                            type             = type
+                            maxlength        = dfies->leng
+                            valuehelprequest = client->_event( val   = 'CALL_POPUP_SHLP'
+                                                               t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
       ELSEIF <struc> IS NOT INITIAL.
 
@@ -236,7 +249,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
                               showvaluehelp = abap_false
                               enabled       = enabled
                               type          = type
-                              maxlength     = dfies->leng ).
+                              maxlength     = dfies->intlen ).
 
         ENDIF.
 
@@ -245,9 +258,9 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
     ENDLOOP.
 
     DATA(toolbar) = simple_form->get_root( )->get_child(
-              )->buttons( ).
+             )->buttons( ).
 
-    toolbar->button( text  = 'Close'
+    toolbar->button( text  = get_txt( 'BRF_TERMINATE_PS' )
                      press = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_edit = abap_true.
@@ -257,14 +270,15 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
                        icon  = 'sap-icon://delete'
                        press = client->_event( val = 'POPUP_DELETE' ) ).
 
-      toolbar->button( text  = 'Copy'
-                       type  = 'Inform'
-                       icon  = 'sap-icon://copy'
-                       press = client->_event( val = 'POPUP_COPY' ) ).
-
+      IF mv_copy = abap_true.
+        toolbar->button( text  = 'Copy'
+                         type  = 'Inform'
+                         icon  = 'sap-icon://copy'
+                         press = client->_event( val = 'POPUP_COPY' ) ).
+      ENDIF.
     ENDIF.
 
-    toolbar->button( text  = 'Okay'
+    toolbar->button( text  = get_txt( 'FB_TEXT_PROC_STATUS_SUCCSS_ALV' )
                      press = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
                      type  = 'Emphasized' ).
 
@@ -288,7 +302,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
         mv_edit = abap_false.
 
-        Copy_table_line( ).
+        copy_table_line( ).
 
         render_popup( ).
 
@@ -315,9 +329,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
       WHEN 'POPUP_CLOSE'.
 
-        ASSIGN mt_data_tmp->* TO FIELD-SYMBOL(<data_tmp>).
-        ASSIGN mt_data->* TO FIELD-SYMBOL(<data>).
-        <data> = <data_tmp>.
+        mt_data->* = mt_data_tmp->*.
 
         client->popup_destroy( ).
 
@@ -329,7 +341,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
       WHEN 'CALL_POPUP_SHLP'.
 
-        call_popup_SHLP( ).
+        call_popup_shlp( ).
 
     ENDCASE.
 
@@ -383,7 +395,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      <fixval> = z2ui5_cl_util=>rtti_get_t_ddic_fixed_values( dfies->rollname  ).
+      <fixval> = z2ui5_cl_util=>rtti_get_t_ddic_fixed_values( CONV #( dfies->rollname ) ).
 
     ENDLOOP.
 
@@ -429,22 +441,24 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
   METHOD popup_delete.
 
-    DATA index TYPE int4.
-
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
-
-    index = get_active_row( ).
 
     ASSIGN mt_data->* TO <tab>.
 
-    " TODO: variable is assigned but never used (ABAP cleaner)
-    DATA(t_arg) = client->get( )-t_event_arg.
+    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-    IF sy-subrc = 0.
-      DELETE <tab> INDEX index.
-    ENDIF.
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      IF <row> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
 
-    set_row_id( ).
+      IF <row> = get_active_row( ).
+        DELETE <tab>.
+      ENDIF.
+
+    ENDLOOP.
+
+*    set_row_id( ).
 
   ENDMETHOD.
 
@@ -484,7 +498,6 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
   METHOD data_to_table.
 
-
     FIELD-SYMBOLS <row> TYPE any.
 
     LOOP AT mt_dfies INTO DATA(dfies).
@@ -501,31 +514,26 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        TRY.
+        DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
 
-            DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
+        SELECT SINGLE funcname FROM tfdir
+          WHERE funcname = @conv
+          INTO @DATA(lv_conex).
 
-*            SELECT SINGLE funcname
-*              FROM ZSM30_V_TFDIR
-*              WHERE funcname = @conv
-*              INTO @DATA(conex).
+        IF sy-subrc = 0.
 
-*            IF sy-subrc = 0.
+          CALL FUNCTION lv_conex
+            EXPORTING
+              input  = <value_struc>
+            IMPORTING
+              output = <value_tab>
+            EXCEPTIONS
+              OTHERS = 99.
+          IF sy-subrc <> 0.
 
-              CALL FUNCTION conv
-                EXPORTING  input  = <value_struc>
-                IMPORTING  output = <value_tab>
-                EXCEPTIONS OTHERS = 99.
-              IF sy-subrc <> 0.
+          ENDIF.
 
-              ENDIF.
-
-*            ENDIF.
-
-          CATCH cx_root.
-            <value_tab> = <value_struc>.
-        ENDTRY.
-
+        ENDIF.
       ELSE.
 
         IF dfies-lowercase = abap_false.
@@ -552,7 +560,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT 'ROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
       IF <row> IS ASSIGNED.
         <row> = sy-tabix.
       ENDIF.
@@ -566,11 +574,21 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     ASSIGN mt_data->* TO <tab>.
 
-    ASSIGN <tab>[  CONV #( get_active_row( ) ) ] TO FIELD-SYMBOL(<row>).
+*    ASSIGN <tab>[  CONV #( get_active_row( ) ) ] TO FIELD-SYMBOL(<row>).
+    DATA(active_row) = get_active_row( ).
 
-    data_to_table( CHANGING row = <row> ).
+    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-    set_row_id( ).
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
+      IF <row_id> IS ASSIGNED.
+        IF <row_id> = active_row.
+          data_to_table( CHANGING row = <line> ).
+        ENDIF.
+      ENDIF.
+
+    ENDLOOP.
+
+*    set_row_id( ).
 
   ENDMETHOD.
 
@@ -579,7 +597,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 *    FIELD-SYMBOLS <row>      TYPE any.
 *
 *    ASSIGN ms_table_row->* TO <row>.
-*    ASSIGN COMPONENT `ROW_ID` OF STRUCTURE <row> TO FIELD-SYMBOL(<id>).
+*    ASSIGN COMPONENT mc_row_id OF STRUCTURE <row> TO FIELD-SYMBOL(<id>).
 *    IF <id> IS ASSIGNED.
 *      result = <id>.
 *    ENDIF.
@@ -601,7 +619,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
-    client->nav_app_call( z2ui5_cl_tm_pop_value_help=>factory( i_table = mv_tabname
+    client->nav_app_call( z2ui5_cl_pop_value_help=>factory( i_table = mv_tabname
                                                                i_fname = mv_f4_fname
                                                                i_value = CONV #( <value_struc> ) ) ).
 
@@ -609,21 +627,21 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
   METHOD call_popup_shlp.
 
-*    FIELD-SYMBOLS <row> TYPE any.
-*
-*    DATA(lt_arg) = client->get( )-t_event_arg.
-*
-*    mv_shlpfield = VALUE string( lt_arg[ 1 ] ).
-*
-*    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
-*
-*    ASSIGN ms_data_row->* TO <row>.
-*    ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
-*
-*    client->nav_app_call( ZSM30_cl_app_005=>factory( i_table = mv_tabname
-*                                                          i_fname = mv_shlpfield
-*                                                          i_value = CONV #( <value_struc> )
-*                                                          i_data  = ms_data_row )   ).
+    FIELD-SYMBOLS <row> TYPE any.
+
+    DATA(lt_arg) = client->get( )-t_event_arg.
+
+    mv_shlpfield = VALUE string( lt_arg[ 1 ] ).
+
+    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
+
+    ASSIGN ms_data_row->* TO <row>.
+    ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+
+    client->nav_app_call( z2ui5_cl_pop_search_help=>factory( i_table = mv_tabname
+                                                          i_fname = mv_shlpfield
+                                                          i_value = CONV #( <value_struc> )
+                                                          i_data  = ms_data_row )   ).
 
   ENDMETHOD.
 
@@ -636,9 +654,15 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     result->mt_dfies   = it_dfies.
     result->mv_row_id  = iv_row_id.
-    result->mo_layout  = io_layout.
+    result->mo_layout  = is_layout.
     result->mv_edit    = iv_edit_mode.
     result->mv_tabname = iv_tabname.
+
+    IF iv_copy_mode IS NOT SUPPLIED.
+      result->mv_copy = abap_true.
+    ELSE.
+      result->mv_copy = iv_copy_mode.
+    ENDIF.
 
     TRY.
         DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( io_table ).
@@ -652,19 +676,14 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA result->mt_data     TYPE HANDLE new_table_desc.
-        CREATE DATA result->mt_data_TMP TYPE HANDLE new_table_desc.
+        CREATE DATA result->mt_data_tmp TYPE HANDLE new_table_desc.
         CREATE DATA result->ms_data_row TYPE HANDLE new_struct_desc.
 
       CATCH cx_root.
     ENDTRY.
 
-    FIELD-SYMBOLS <data> TYPE ANY TABLE.
-    ASSIGN result->mt_data->* TO <data>.
-    ASSIGN result->mt_data_tmp->* TO FIELD-SYMBOL(<data_tmp>).
-    ASSIGN io_table->* TO FIELD-SYMBOL(<io_table>).
-
-    <data> = <io_table>.
-    <data_tmp> = <io_table>.
+    result->mt_data->* = io_table->*.
+    result->mt_data_tmp->* = io_table->*.
 
     IF iv_row_id IS INITIAL.
 
@@ -677,10 +696,10 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
       IF <line> IS ASSIGNED.
 
-        ASSIGN COMPONENT `ROW_ID` OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
+        ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
         IF <value> IS ASSIGNED.
 
-          <value> = lines( <data> ).
+          <value> = lines( result->mt_data->* ).
           result->mv_row_id = <value>.
         ENDIF.
 
@@ -700,7 +719,7 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     TRY.
         " War es die F4 Hilfe?
-        DATA(app) = CAST z2ui5_cl_tm_pop_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_pop_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 
@@ -721,38 +740,38 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 
-  METHOD on_after_SHLP.
-*    FIELD-SYMBOLS <row> TYPE any.
-*
-*    " Kommen wir aus einer anderen APP
-*    IF client->get( )-check_on_navigated = abap_false.
-*      RETURN.
-*    ENDIF.
-*
-*    TRY.
-*        " War es die Such-Hilfe?
-*        DATA(app) = CAST ZSM30_cl_app_005( client->get_app( client->get( )-s_draft-id_prev_app ) ).
-*
-*        IF app->mv_return_value IS NOT INITIAL.
-*
-*          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
-*
-*          ASSIGN ms_data_row->* TO <row>.
-*          ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
-*
-*          IF <value_struc> IS ASSIGNED.
-*            <value_struc> = app->mv_return_value.
-*          ENDIF.
-*
-*        ENDIF.
-*
-*        render_popup( ).
-*
-*      CATCH cx_root.
-*    ENDTRY.
+  METHOD on_after_shlp.
+    FIELD-SYMBOLS <row> TYPE any.
+
+    " Kommen wir aus einer anderen APP
+    IF client->get( )-check_on_navigated = abap_false.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        " War es die Such-Hilfe?
+        DATA(app) = CAST z2ui5_cl_pop_search_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+
+        IF app->mv_return_value IS NOT INITIAL.
+
+          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
+
+          ASSIGN ms_data_row->* TO <row>.
+          ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+
+          IF <value_struc> IS ASSIGNED.
+            <value_struc> = app->mv_return_value.
+          ENDIF.
+
+        ENDIF.
+
+        render_popup( ).
+
+      CATCH cx_root.
+    ENDTRY.
   ENDMETHOD.
 
-  METHOD Copy_table_line.
+  METHOD copy_table_line.
 
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
 
@@ -765,16 +784,14 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
 
     IF <line> IS ASSIGNED.
 
-      ASSIGN COMPONENT `ROW_ID` OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
       IF <value> IS ASSIGNED.
 
-        ASSIGN ms_data_row->* TO FIELD-SYMBOL(<row>).
-
-        FIELD-SYMBOLS <data> TYPE ANY TABLE.
-        ASSIGN mt_data->* TO <data>.
-
-        <line> = <row>.
-        <value> = lines( <data> ).
+        <line> = ms_data_row->*.
+        TRY.
+            <value> = cl_system_uuid=>create_uuid_c32_static( ).
+          CATCH cx_root.
+        ENDTRY.
         mv_row_id = <value>.
       ENDIF.
 
@@ -783,11 +800,6 @@ CLASS z2ui5_cl_tm_sm30_02 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_view_settings.
-
-*            SELECT *
-*              FROM ZSM30_V_DD27S
-*              WHERE viewname = @mv_tabname
-*              INTO table @DATA(dd07s).
 
   ENDMETHOD.
 
