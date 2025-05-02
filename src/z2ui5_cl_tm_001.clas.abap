@@ -728,7 +728,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           EXIT.
         ENDIF.
         lv_row = lv_row && <field>.
-        lv_index += 1.
+        lv_index = lv_index + 1.
       ENDDO.
 
       IF lv_row NS mv_search_value.
