@@ -8,10 +8,7 @@
 Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installation
 
 #### Key Features
-* SE16 App | Display Data
-* SM30 App | Edit Data, Adjust Customizing entries with F4-Help Fixed Values and Search-Helps, Add Entries, Delete Entires, Transport Changes
-* Value Help Popup | Generate value help dialogs based on DDIC information
-* Transport Requests Popup | Display transport requests in a user-friendly way
+* Edit Data, Adjust Customizing entries with Value-Help, Fixed Values and Search-Helps, Add Entries, Delete Entires, Transport Changes
   
 #### Compatibility
 * S/4 Public Cloud and BTP ABAP Environment (ABAP for Cloud)
@@ -20,17 +17,14 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 
 #### Dependencies
 * [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-* [layout-variant-management](https://github.com/abap2UI5-addons/layout-variant-management)
-
-#### Limitations & Todo
-* Transports currently only work in On-Premise
-* Search-Help not yet running on Cloud Stack
+* [layout-management](https://github.com/abap2UI5-addons/layout-management)
+* [popups](https://github.com/abap2UI5-addons/popups)
 
 #### Demo
-###### SM30
+###### Display Entries
 <img width="700" alt="Google Chrome 2024-09-09 12 14 58" src="https://github.com/user-attachments/assets/51a1d7e5-ca7e-4359-9e12-39b00b3c11bf">
 
-###### SM30 Edit Entries
+###### Edit Entries
 <img width="700" alt="Google Chrome 2024-09-09 12 14 58" src="https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c">
 
 #### Contribution & Support
