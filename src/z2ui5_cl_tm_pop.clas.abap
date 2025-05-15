@@ -260,25 +260,33 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     DATA(toolbar) = simple_form->get_root( )->get_child(
              )->buttons( ).
 
-    toolbar->button( text  = get_txt( 'BRF_TERMINATE_PS' )
+    MESSAGE s512(PRC_PRI) into DATA(msg).
+
+    toolbar->button( text  = msg
                      press = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_edit = abap_true.
 
-      toolbar->button( text  = 'Delete'
+     MESSAGE s160(ISLM_DI_GEN) into msg.
+
+      toolbar->button( text  = msg
                        type  = 'Reject'
                        icon  = 'sap-icon://delete'
                        press = client->_event( val = 'POPUP_DELETE' ) ).
 
+MESSAGE s229(CNV_IUUC_REPLICATION) into msg.
+
       IF mv_copy = abap_true.
-        toolbar->button( text  = 'Copy'
+        toolbar->button( text  = msg
                          type  = 'Inform'
                          icon  = 'sap-icon://copy'
                          press = client->_event( val = 'POPUP_COPY' ) ).
       ENDIF.
     ENDIF.
 
-    toolbar->button( text  = get_txt( 'FB_TEXT_PROC_STATUS_SUCCSS_ALV' )
+ MESSAGE s020(FSL_UTILITIES) into msg.
+
+    toolbar->button( text  =  msg
                      press = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
                      type  = 'Emphasized' ).
 

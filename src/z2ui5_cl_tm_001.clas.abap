@@ -234,7 +234,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                         is_transport = ms_transport ).
 
         CATCH cx_root.
-          client->message_toast_display( `Transport Error` ).
+        MESSAGE e316(42) into DATA(msg).  " Transport request error
+          client->message_toast_display( msg ).
           RETURN.
       ENDTRY.
 
@@ -257,7 +258,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             MODIFY (mv_table) FROM TABLE @<tab_org>.
             IF sy-subrc = 0.
               COMMIT WORK AND WAIT.
-              client->message_toast_display( `Save successful` ).
+              MESSAGE s002(I18N) into msg.
+              client->message_toast_display( msg ).
 
               CLEAR mv_change_active.
             ENDIF.
@@ -268,7 +270,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             INSERT (mv_table) FROM TABLE @<tab_org>.
             IF sy-subrc = 0.
               COMMIT WORK AND WAIT.
-              client->message_toast_display( `Save successful` ).
+              MESSAGE s002(I18N) into msg.
+              client->message_toast_display( msg ).
 
               CLEAR mv_change_active.
             ENDIF.
@@ -362,11 +365,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                         is_transport = ms_transport ).
 
         CATCH cx_root.
-          client->message_toast_display( `Transport Error` ).
+        MESSAGE e316(42) into DATA(msg).  " Transport request error
+          client->message_toast_display( msg ).
           RETURN.
       ENDTRY.
-
-      client->message_toast_display( 'Entries were added to the transport request' ).
+   message s215(RMPS_GENERAL) with ms_transport-transport into msg. "Transporteintrag erfolgreich geschrieben (&1)
+      client->message_toast_display( msg ).
 
     ENDIF.
   ENDMETHOD.
@@ -654,11 +658,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                     press = client->_event( 'BUTTON_ADD' )
                     type  = 'Default'
          )->button( icon  = 'sap-icon://refresh'
-                    text  = get_txt( '/SCMB/LOC_REFRESH' )
+                    text  = get_txt( 'REFRESH_F8' )
                     press = client->_event( 'BUTTON_REFRESH' )
                     type  = 'Default'
          )->button( enabled = client->_bind( mv_change_active )
-                    text    = get_txt( '/SCWM/DE_LM_LOGSAVE' )
+                    text    = get_txt( 'SICHERN' )
                     press   = client->_event( 'BUTTON_SAVE' )
                     type    = 'Success' ).
 
@@ -666,13 +670,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
        )->_generic( `menu`
           )->_generic( `Menu`
              )->menu_item( icon  = 'sap-icon://shipping-status'
-                           text  = get_txt( 'ALLENTRIES' )
+                           text  = get_txt( 'ALLES_FUB' )
                            press = client->_event( 'TRANSPORT_ALL' )
              )->menu_item( icon  = 'sap-icon://shipping-status'
-                           text  = get_txt( 'UKM_RISK_EDIT_FLG' )
+                           text  = get_txt( 'FUNCCHANGE' )
                            press = client->_event( 'TRANSPORT_CHANGE' )
              )->menu_item( icon  = 'sap-icon://key-user-settings'
-                           text  = 'Stala Mode' " get_txt( 'POWL_ADMIN_TY' )
+                           text  = get_txt( 'POWL_ADMIN_TY' )
                            press = client->_event( 'BUTTON_EDIT' ) ).
 
     IF mo_parent_view IS INITIAL.
