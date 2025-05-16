@@ -10,7 +10,7 @@ INTERFACE z2ui5_if_tm_001
   " The App is in an unsaves State - Message pops up when leaving
   DATA mv_change_active     TYPE abap_bool.
 
-  DATA ms_transport         type z2ui5_cl_util_abap_new=>ty_s_transport .
+  DATA ms_transport         type z2ui5_cl_util=>ty_s_transport .
 
   METHODS set_app_data
     IMPORTING
