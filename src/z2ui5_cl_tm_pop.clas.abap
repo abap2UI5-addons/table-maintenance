@@ -83,6 +83,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS copy_table_line.
     METHODS get_view_settings.
 
+
+
   PRIVATE SECTION.
 
 ENDCLASS.
@@ -260,21 +262,21 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     DATA(toolbar) = simple_form->get_root( )->get_child(
              )->buttons( ).
 
-    MESSAGE s512(PRC_PRI) into DATA(msg).
+    MESSAGE s512(prc_pri) INTO DATA(msg).
 
     toolbar->button( text  = msg
                      press = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_edit = abap_true.
 
-     MESSAGE s160(ISLM_DI_GEN) into msg.
+      MESSAGE s160(islm_di_gen) INTO msg.
 
       toolbar->button( text  = msg
                        type  = 'Reject'
                        icon  = 'sap-icon://delete'
                        press = client->_event( val = 'POPUP_DELETE' ) ).
 
-MESSAGE s229(CNV_IUUC_REPLICATION) into msg.
+      MESSAGE s229(cnv_iuuc_replication) INTO msg.
 
       IF mv_copy = abap_true.
         toolbar->button( text  = msg
@@ -284,7 +286,7 @@ MESSAGE s229(CNV_IUUC_REPLICATION) into msg.
       ENDIF.
     ENDIF.
 
- MESSAGE s020(FSL_UTILITIES) into msg.
+    MESSAGE s020(fsl_utilities) INTO msg.
 
     toolbar->button( text  =  msg
                      press = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
@@ -522,26 +524,12 @@ MESSAGE s229(CNV_IUUC_REPLICATION) into msg.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        DATA(conv) = |CONVERSION_EXIT_{ dfies-convexit }_INPUT|.
-
-        SELECT SINGLE funcname FROM tfdir
-          WHERE funcname = @conv
-          INTO @DATA(lv_conex).
-
-        IF sy-subrc = 0.
-
-          CALL FUNCTION lv_conex
+        z2ui5_cl_util=>conv_exit(
             EXPORTING
-              input  = <value_struc>
-            IMPORTING
-              output = <value_tab>
-            EXCEPTIONS
-              OTHERS = 99.
-          IF sy-subrc <> 0.
-
-          ENDIF.
-
-        ENDIF.
+                name = dfies
+                val = <value_struc>
+            CHANGING
+                result = <value_tab> ).
       ELSE.
 
         IF dfies-lowercase = abap_false.
@@ -810,5 +798,6 @@ MESSAGE s229(CNV_IUUC_REPLICATION) into msg.
   METHOD get_view_settings.
 
   ENDMETHOD.
+
 
 ENDCLASS.
