@@ -44,8 +44,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
 
     METHODS get_txt
       IMPORTING
-        roll          TYPE string
-        !type         TYPE char1 OPTIONAL
+        roll          TYPE clike
+        !type         TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE string.
 
@@ -262,33 +262,40 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     DATA(toolbar) = simple_form->get_root( )->get_child(
              )->buttons( ).
 
-    MESSAGE s512(prc_pri) INTO DATA(msg).
 
-    toolbar->button( text  = msg
+    DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg(
+               id     = 'PRC_PRI'
+               no     = `512` ).
+    "MESSAGE s512(prc_pri) INTO DATA(msg).
+
+    toolbar->button( text  = ls_msg-text
                      press = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_edit = abap_true.
 
-      MESSAGE s160(islm_di_gen) INTO msg.
+      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'ISLM_DI_GEN' no = `160` ).
+      "  MESSAGE s160(islm_di_gen) INTO msg.
 
-      toolbar->button( text  = msg
+      toolbar->button( text  = ls_msg-text
                        type  = 'Reject'
                        icon  = 'sap-icon://delete'
                        press = client->_event( val = 'POPUP_DELETE' ) ).
 
-      MESSAGE s229(cnv_iuuc_replication) INTO msg.
+      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'cnv_iuuc_replication' no = `229` ).
+      "MESSAGE s229(cnv_iuuc_replication) INTO msg.
 
       IF mv_copy = abap_true.
-        toolbar->button( text  = msg
+        toolbar->button( text  = ls_msg-text
                          type  = 'Inform'
                          icon  = 'sap-icon://copy'
                          press = client->_event( val = 'POPUP_COPY' ) ).
       ENDIF.
     ENDIF.
 
-    MESSAGE s020(fsl_utilities) INTO msg.
+    ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'fsl_utilities' no = `020` ).
+    " MESSAGE s020(fsl_utilities) INTO msg.
 
-    toolbar->button( text  =  msg
+    toolbar->button( text  = ls_msg-text
                      press = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
                      type  = 'Emphasized' ).
 
