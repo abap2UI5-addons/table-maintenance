@@ -29,3 +29,4 @@ Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installatio
 
 #### Contribution & Support
 Pull requests are welcome! Whether you're fixing bugs, adding new functionality, or improving documentation, your contributions are highly appreciated. If you encounter any issues, feel free to open an issue.
+
