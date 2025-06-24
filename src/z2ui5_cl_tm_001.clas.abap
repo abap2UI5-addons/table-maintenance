@@ -226,19 +226,18 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       TRY.
 
           z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table
-                                                        iv_tabname   = mv_table
-                                                        is_transport = ms_transport ).
+                                                      iv_tabname   = mv_table
+                                                      is_transport = ms_transport ).
 
           z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table_del
-                                                        iv_tabname   = mv_table
-                                                        is_transport = ms_transport ).
+                                                      iv_tabname   = mv_table
+                                                      is_transport = ms_transport ).
 
         CATCH cx_root.
 
-          DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg(
-               id     = '42'
-               no     = `316` ).
-          "MESSAGE e316(42) into DATA(msg).  " Transport request error
+          DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg( id = '42'
+                                                        no = `316` ).
+          " MESSAGE e316(42) into DATA(msg).  " Transport request error
           client->message_toast_display( ls_msg-text ).
           RETURN.
       ENDTRY.
@@ -262,9 +261,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             MODIFY (mv_table) FROM TABLE @<tab_org>.
             IF sy-subrc = 0.
               COMMIT WORK AND WAIT.
-              ls_msg = z2ui5_cl_util=>msg_get_by_msg(
-             id     = 'i18n'
-             no     = `002` ).
+              ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'i18n'
+                                                      no = `002` ).
               " MESSAGE s002(i18n) INTO msg.
               client->message_toast_display( ls_msg-text ).
 
@@ -277,9 +275,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             INSERT (mv_table) FROM TABLE @<tab_org>.
             IF sy-subrc = 0.
               COMMIT WORK AND WAIT.
-              ls_msg = z2ui5_cl_util=>msg_get_by_msg(
-               id     = 'i18n'
-               no     = '002' ).
+              ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'i18n'
+                                                      no = '002' ).
 
               " MESSAGE s002(i18n) INTO msg.
               client->message_toast_display( ls_msg-text ).
@@ -340,6 +337,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ELSE.
 
+      IF ms_transport-locl = abap_true.
+        RETURN.
+      ENDIF.
+
       CLEAR mv_ucomm_tmp.
 
       ASSIGN mt_table->* TO <tab>.
@@ -368,26 +369,24 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDTRY.
       TRY.
           z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table
-                                                        iv_tabname   = mv_table
-                                                        is_transport = ms_transport ).
+                                                      iv_tabname   = mv_table
+                                                      is_transport = ms_transport ).
 
           z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table_del
-                                                        iv_tabname   = mv_table
-                                                        is_transport = ms_transport ).
+                                                      iv_tabname   = mv_table
+                                                      is_transport = ms_transport ).
 
         CATCH cx_root.
-          DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg(
-              id     = '42'
-              no     = `316` ).
+          DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg( id = '42'
+                                                        no = `316` ).
 
-          "MESSAGE e316(42) INTO DATA(msg).  " Transport request error
+          " MESSAGE e316(42) INTO DATA(msg).  " Transport request error
           client->message_toast_display( ls_msg-text ).
           RETURN.
       ENDTRY.
-      ls_msg = z2ui5_cl_util=>msg_get_by_msg(
-               id     = 'rmps_general'
-               no     = `215` ).
-     " MESSAGE s215(rmps_general) WITH ms_transport-transport INTO msg. "Transporteintrag erfolgreich geschrieben (&1)
+      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'rmps_general'
+                                              no = `215` ).
+      " MESSAGE s215(rmps_general) WITH ms_transport-transport INTO msg. "Transporteintrag erfolgreich geschrieben (&1)
       client->message_toast_display( ls_msg-text ).
 
     ENDIF.
@@ -933,18 +932,19 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ms_transport = app->ms_transport.
 
         IF ms_transport IS NOT INITIAL.
+
           CASE mv_ucomm_tmp.
             WHEN 'TRANSPORT_ALL'.
               transport_all( ).
             WHEN 'TRANSPORT_CHANGE'.
 
               client->message_toast_display( ms_transport-task  ).
-
               CLEAR mv_ucomm_tmp.
 
             WHEN 'BUTTON_SAVE'.
               button_save( ).
           ENDCASE.
+
         ENDIF.
 
         view_model_update( ).
