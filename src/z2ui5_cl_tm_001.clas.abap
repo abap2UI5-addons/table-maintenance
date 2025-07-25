@@ -1236,7 +1236,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
           ENDLOOP.
 
-          mt_table->* = app->mt_data->*.
+
+          <tab> = <app_tab>.
 
           " Transfer changes for TAB to TMP_TAB.
           LOOP AT <tab> ASSIGNING <line>.
