@@ -83,8 +83,6 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS copy_table_line.
     METHODS get_view_settings.
 
-
-
   PRIVATE SECTION.
 
 ENDCLASS.
@@ -262,18 +260,17 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     DATA(toolbar) = simple_form->get_root( )->get_child(
              )->buttons( ).
 
-
-    DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg(
-               id     = 'PRC_PRI'
-               no     = `512` ).
-    "MESSAGE s512(prc_pri) INTO DATA(msg).
+    DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg( id = 'PRC_PRI'
+                                                  no = `512` ).
+    " MESSAGE s512(prc_pri) INTO DATA(msg).
 
     toolbar->button( text  = ls_msg-text
                      press = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_edit = abap_true.
 
-      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'ISLM_DI_GEN' no = `160` ).
+      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'ISLM_DI_GEN'
+                                              no = `160` ).
       "  MESSAGE s160(islm_di_gen) INTO msg.
 
       toolbar->button( text  = ls_msg-text
@@ -281,8 +278,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                        icon  = 'sap-icon://delete'
                        press = client->_event( val = 'POPUP_DELETE' ) ).
 
-      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'cnv_iuuc_replication' no = `229` ).
-      "MESSAGE s229(cnv_iuuc_replication) INTO msg.
+      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'cnv_iuuc_replication'
+                                              no = `229` ).
+      " MESSAGE s229(cnv_iuuc_replication) INTO msg.
 
       IF mv_copy = abap_true.
         toolbar->button( text  = ls_msg-text
@@ -292,7 +290,8 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'fsl_utilities' no = `020` ).
+    ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'fsl_utilities'
+                                            no = `020` ).
     " MESSAGE s020(fsl_utilities) INTO msg.
 
     toolbar->button( text  = ls_msg-text
@@ -346,7 +345,10 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       WHEN 'POPUP_CLOSE'.
 
-        mt_data->* = mt_data_tmp->*.
+        ASSIGN mt_data_tmp->* TO FIELD-SYMBOL(<mt_data_tmp>).
+        ASSIGN mt_data->* TO FIELD-SYMBOL(<mt_data>).
+
+        <mt_data> = <mt_data_tmp>.
 
         client->popup_destroy( ).
 
@@ -531,12 +533,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        z2ui5_cl_util_ext=>conv_exit(
-            EXPORTING
-                name = dfies
-                val = <value_struc>
-            CHANGING
-                result = <value_tab> ).
+        z2ui5_cl_util_ext=>conv_exit( EXPORTING name   = dfies
+                                                val    = <value_struc>
+                                      CHANGING  result = <value_tab> ).
       ELSE.
 
         IF dfies-lowercase = abap_false.
@@ -623,8 +622,8 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
     client->nav_app_call( z2ui5_cl_pop_value_help=>factory( i_table = mv_tabname
-                                                               i_fname = mv_f4_fname
-                                                               i_value = CONV #( <value_struc> ) ) ).
+                                                            i_fname = mv_f4_fname
+                                                            i_value = CONV #( <value_struc> ) ) ).
 
   ENDMETHOD.
 
@@ -642,9 +641,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
     client->nav_app_call( z2ui5_cl_pop_search_help=>factory( i_table = mv_tabname
-                                                          i_fname = mv_shlpfield
-                                                          i_value = CONV #( <value_struc> )
-                                                          i_data  = ms_data_row )   ).
+                                                             i_fname = mv_shlpfield
+                                                             i_value = CONV #( <value_struc> )
+                                                             i_data  = ms_data_row )   ).
 
   ENDMETHOD.
 
@@ -685,8 +684,12 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       CATCH cx_root.
     ENDTRY.
 
-    result->mt_data->* = io_table->*.
-    result->mt_data_tmp->* = io_table->*.
+    ASSIGN io_table->* to FIELD-SYMBOL(<io_table>).
+    ASSIGN result->mt_data->* to FIELD-SYMBOL(<mt_data>).
+    ASSIGN result->mt_data_tmp->* to FIELD-SYMBOL(<mt_data_tmp>).
+
+    <mt_data> = <io_table>.
+    <mt_data_tmp> = <io_table>.
 
     IF iv_row_id IS INITIAL.
 
@@ -805,6 +808,5 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
   METHOD get_view_settings.
 
   ENDMETHOD.
-
 
 ENDCLASS.
