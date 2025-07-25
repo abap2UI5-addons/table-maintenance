@@ -16,7 +16,7 @@ CLASS z2ui5_cl_tm_pop DEFINITION
       IMPORTING
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
-        it_dfies      TYPE z2ui5_cl_util=>ty_t_dfies
+        it_dfies      TYPE z2ui5_cl_util_ext=>ty_t_dfies
         is_layout     TYPE REF TO z2ui5_cl_layo_manager
         iv_edit_mode  TYPE abap_bool
         iv_copy_mode  TYPE abap_bool OPTIONAL
@@ -35,7 +35,7 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_f4_fname  TYPE string.
     DATA mv_shlpfield TYPE string.
 
-    DATA mt_dfies     TYPE z2ui5_cl_util=>ty_t_dfies.
+    DATA mt_dfies     TYPE z2ui5_cl_util_ext=>ty_t_dfies.
     DATA mv_tabname   TYPE string. " Importing
 
     METHODS on_init.
@@ -531,7 +531,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        z2ui5_cl_util=>conv_exit(
+        z2ui5_cl_util_ext=>conv_exit(
             EXPORTING
                 name = dfies
                 val = <value_struc>
