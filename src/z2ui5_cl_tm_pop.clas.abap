@@ -684,9 +684,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       CATCH cx_root.
     ENDTRY.
 
-    ASSIGN io_table->* to FIELD-SYMBOL(<io_table>).
-    ASSIGN result->mt_data->* to FIELD-SYMBOL(<mt_data>).
-    ASSIGN result->mt_data_tmp->* to FIELD-SYMBOL(<mt_data_tmp>).
+    ASSIGN io_table->* TO FIELD-SYMBOL(<io_table>).
+    ASSIGN result->mt_data->* TO FIELD-SYMBOL(<mt_data>).
+    ASSIGN result->mt_data_tmp->* TO FIELD-SYMBOL(<mt_data_tmp>).
 
     <mt_data> = <io_table>.
     <mt_data_tmp> = <io_table>.
@@ -705,7 +705,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
         IF <value> IS ASSIGNED.
 
-          <value> = lines( result->mt_data->* ).
+          <value> = lines( <mt_data> ).
           result->mv_row_id = <value>.
         ENDIF.
 
@@ -788,19 +788,21 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-    IF <line> IS ASSIGNED.
+    IF <line> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
 
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
-      IF <value> IS ASSIGNED.
+    ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
+    IF <value> IS ASSIGNED.
 
-        <line> = ms_data_row->*.
-        TRY.
-            <value> = cl_system_uuid=>create_uuid_c32_static( ).
-          CATCH cx_root.
-        ENDTRY.
-        mv_row_id = <value>.
-      ENDIF.
+      ASSIGN ms_data_row->* TO FIELD-SYMBOL(<row>).
 
+      <line> = <row>.
+      TRY.
+          <value> = cl_system_uuid=>create_uuid_c32_static( ).
+        CATCH cx_root.
+      ENDTRY.
+      mv_row_id = <value>.
     ENDIF.
 
   ENDMETHOD.

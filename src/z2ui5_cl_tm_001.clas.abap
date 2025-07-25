@@ -32,7 +32,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
       END OF ty_s_keys.
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
 
-    DATA mt_dfies          TYPE z2ui5_cl_util=>ty_t_dfies.
+    DATA mt_dfies          TYPE z2ui5_cl_util_ext=>ty_t_dfies.
     DATA client            TYPE REF TO z2ui5_if_client.
     DATA check_initialized TYPE abap_bool.
     DATA mv_f4_fname       TYPE string.
@@ -448,13 +448,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     set_row_id( ).
 
-    mt_table_tmp->* = mt_table->*.  " For Filter etc.
-    mt_table_org->* = mt_table->*.  " For DB alignment bevore Save
+    ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
+    ASSIGN mt_table_org->* TO FIELD-SYMBOL(<mt_table_org>).
+
+    <mt_table_tmp> = <table>.  " For Filter etc.
+    <mt_table_org> = <table>.  " For DB alignment bevore Save
   ENDMETHOD.
 
   METHOD get_dfies.
 
-    mt_dfies = z2ui5_cl_util=>rtti_get_t_dfies_by_table_name( mv_table ).
+    mt_dfies = z2ui5_cl_util_ext=>rtti_get_t_dfies_by_table_name( mv_table ).
 
     " Check if the DB for the F4 Help is released
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies) WHERE checktable IS NOT INITIAL.
@@ -532,12 +535,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD render_table.
 
+    ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
+
     DATA(table) = page->table( growing          = 'true'
                                growingthreshold = '100'
                                width            = 'auto'
                                sticky           = `ColumnHeaders`
                                autopopinmode    = abap_true
-                               items            = client->_bind_edit( val = mt_table->* )
+                               items            = client->_bind_edit( <tab> )
                                headertext       = mv_table ).
 
     DATA(headder) = table->header_toolbar(
@@ -975,13 +980,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
     selkz->* = abap_true.
 
-    DATA(table) = page->flex_box( height = '85vh' )->ui_table(
-                                                      alternaterowcolors  = 'true'
-                                                      visiblerowcountmode = 'Auto'
-*                                                      fixedrowcount       = '1'
-                                                      selectionmode       = 'None'
-                                                      selectionbehavior   = 'RowSelector'
-                                                      rows                = client->_bind_edit( val = mt_table->* ) ).
+    ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
+
+    DATA(table) = page->flex_box( height = '85vh' )->ui_table( alternaterowcolors  = 'true'
+                                                               visiblerowcountmode = 'Auto'
+*                                                               fixedrowcount       = '1'
+                                                               selectionmode       = 'None'
+                                                               selectionbehavior   = 'RowSelector'
+                                                               rows                = client->_bind_edit( <tab> ) ).
 
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
@@ -1079,7 +1085,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     CLEAR mv_key_error.
 
-    IF mt_table_tmp->* <> mt_table->*.
+    ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
+    ASSIGN mt_table->* TO FIELD-SYMBOL(<mt_table>).
+
+    IF <mt_table_tmp> <> <mt_table>.
       mv_change_active = abap_true.
     ELSE.
       mv_change_active = abap_false.
@@ -1143,10 +1152,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     TRY.
         DATA(app) = CAST z2ui5_cl_tm_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
-        IF app->mt_data->* <> mt_table->*.
+        ASSIGN mt_table->* TO <tab>.
+        ASSIGN app->mt_data->* TO FIELD-SYMBOL(<app_tab>).
+
+        IF <app_tab> <> <tab>.
           mv_change_active = abap_true.
 
-          ASSIGN mt_table->* TO <tab>.
           ASSIGN mt_table_tmp->* TO <tab_tmp>.
           ASSIGN app->mt_data->* TO <tab_changed>.
 
