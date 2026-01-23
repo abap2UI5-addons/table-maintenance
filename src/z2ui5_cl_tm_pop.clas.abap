@@ -249,7 +249,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                               showvaluehelp = abap_false
                               enabled       = enabled
                               type          = type
-                              maxlength     = dfies->intlen ).
+                              maxlength     = dfies->leng ).
 
         ENDIF.
 
