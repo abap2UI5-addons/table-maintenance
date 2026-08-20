@@ -81,11 +81,11 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS render_main_footer
       IMPORTING
-        !page TYPE REF TO z2ui5_cl_xml_view.
+        !page TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     METHODS render_main_head
       RETURNING
-        VALUE(result) TYPE REF TO z2ui5_cl_xml_view.
+        VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     METHODS on_event_main.
 
@@ -105,11 +105,11 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS render_ui_table
       IMPORTING
-        !page TYPE REF TO z2ui5_cl_xml_view.
+        !page TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     METHODS render_table
       IMPORTING
-        !page TYPE REF TO z2ui5_cl_xml_view.
+        !page TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     METHODS button_delete.
     METHODS check_input.
@@ -537,33 +537,38 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
 
-    DATA(table) = page->table( growing          = 'true'
-                               growingthreshold = '100'
-                               width            = 'auto'
-                               sticky           = `ColumnHeaders`
-                               autopopinmode    = abap_true
-                               items            = client->_bind_edit( <tab> )
-                               headertext       = mv_table ).
+    DATA(table) = page->ele( `Table` 
+                      )->a( n = `growing` v = 'true' 
+                      )->a( n = `growingThreshold` v = '100' 
+                      )->a( n = `width` v = 'auto' 
+                      )->a( n = `sticky` v = `ColumnHeaders` 
+                      )->a( n = `autoPopinMode` b = abap_true 
+                      )->a( n = `items` v = client->_bind_edit( <tab> ) 
+                      )->a( n = `headerText` v = mv_table ).
 
-    DATA(headder) = table->header_toolbar(
-               )->overflow_toolbar(
-                 )->title( text = mv_table
-                 )->toolbar_spacer(
-                 )->search_field( value  = client->_bind_edit( mv_search_value )
-                                  search = client->_event( 'BUTTON_SEARCH' )
-                                  change = client->_event( 'BUTTON_SEARCH' )
-                                  id     = `SEARCH`
-                                  width  = '17.5rem' ).
+    DATA(headder) = table->ele( `headerToolbar` 
+                        )->ele( `OverflowToolbar` 
+                        )->tag( `Title` 
+                        )->a( n = `text` v = mv_table 
+                        )->tag( `ToolbarSpacer` 
+                        )->tag( `SearchField` 
+                        )->a( n = `value` v = client->_bind_edit( mv_search_value ) 
+                        )->a( n = `search` v = client->_event( 'BUTTON_SEARCH' ) 
+                        )->a( n = `change` v = client->_event( 'BUTTON_SEARCH' ) 
+                        )->a( n = `id` v = `SEARCH` 
+                        )->a( n = `width` v = '17.5rem' ).
 
-    headder->button( icon  = 'sap-icon://action-settings'
-                     press = client->_event( val = mo_layout->ms_layout-s_head-guid ) ).
+    headder->tag( `Button` 
+        )->a( n = `icon` v = 'sap-icon://action-settings' 
+        )->a( n = `press` v = client->_event( val = mo_layout->ms_layout-s_head-guid ) ).
 
-    DATA(columns) = table->columns( ).
+    DATA(columns) = table->ele( `columns` ).
 
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      columns->column( visible         = client->_bind( val       = layout->visible
+      columns->ele( `Column` 
+          )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                         tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
 *                       halign          = client->_bind( val       = layout->halign
@@ -571,25 +576,27 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 *                       tab_index       = lv_index )
 *                       importance      = client->_bind( val       = layout->importance
 *                       tab             = mo_layout->ms_layout-t_layout
-*                       tab_index       = lv_index )
-                       mergeduplicates = client->_bind( val       = layout->merge
+*                       tab_index       = lv_index ) 
+          )->a( n = `mergeDuplicates` v = client->_bind( val       = layout->merge
                                                         tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-                       width           = client->_bind( val       = layout->width
+                                                        tab_index = lv_index ) 
+          )->a( n = `width` v = client->_bind( val       = layout->width
                                                         tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index )
-       )->text( layout->tlabel ).
+                                                        tab_index = lv_index ) 
+          )->tag( `Text` 
+          )->a( n = `text` v = layout->tlabel ).
 
     ENDLOOP.
 
-    DATA(cells) = columns->get_parent( )->items(
-                                       )->column_list_item(
-                                           valign = 'Middle'
-                                           type   = 'Navigation'
-*                                           type   = 'Active'
-                                           press  = client->_event( val   = 'ROW_SELECT'
-                                                                    t_arg = VALUE #( ( `${ROW_ID}`  ) ) )
-                                       )->cells( ).
+    DATA(cells) = columns->end( 
+                      )->ele( `items` 
+                      )->ele( `ColumnListItem` 
+                      )->a( n = `vAlign` v = 'Middle' 
+                      )->a( n = `type` v = 'Navigation'
+*                                           type   = 'Active' 
+                      )->a( n = `press` v = client->_event( val   = 'ROW_SELECT'
+                                                                    t_arg = VALUE #( ( `${ROW_ID}`  ) ) ) 
+                      )->ele( `cells` ).
 
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
 
@@ -618,18 +625,22 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDLOOP.
 
         IF layout->reference_field IS NOT INITIAL.
-          cells->object_identifier( title = |\{{ layout->fname }\} \{{ layout->reference_field }\}|
-                                    text  = sub_col ).
+          cells->ele( `ObjectIdentifier` 
+              )->a( n = `title` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| 
+              )->a( n = `text` v = sub_col ).
         ELSE.
-          cells->object_identifier( title = |\{{ layout->fname }\}|
-                                    text  = sub_col ).
+          cells->ele( `ObjectIdentifier` 
+              )->a( n = `title` v = |\{{ layout->fname }\}| 
+              )->a( n = `text` v = sub_col ).
         ENDIF.
 
       ELSE.
         IF layout->reference_field IS NOT INITIAL.
-          cells->object_identifier( text = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
+          cells->ele( `ObjectIdentifier` 
+              )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
         ELSE.
-          cells->object_identifier( text = |\{{ layout->fname }\}| ).
+          cells->ele( `ObjectIdentifier` 
+              )->a( n = `text` v = |\{{ layout->fname }\}| ).
         ENDIF.
       ENDIF.
     ENDLOOP.
@@ -639,67 +650,94 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD render_main_head.
     IF mo_parent_view IS INITIAL.
 
-      DATA(view) = z2ui5_cl_xml_view=>factory( ). "->shell( ).
+      DATA(view) = z2ui5_cl_ui5_view_builder=>factory( 
+                       )->ele( n = `View` ns = `mvc` 
+                       )->a( n = `xmlns` v = `sap.m` 
+                       )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc` 
+                       )->a( n = `xmlns:core` v = `sap.ui.core` 
+                       )->a( n = `xmlns:table` v = `sap.ui.table` 
+                       )->a( n = `xmlns:z2ui5` v = `z2ui5.cc` 
+                       )->a( n = `displayBlock` v = `true` 
+                       )->a( n = `height` v = `100%` ). "->shell( ).
 
       IF client->get( )-check_launchpad_active = abap_true.
 
-        result = view->page( showheader = abap_false  ).
-        result->_z2ui5( )->lp_title( mv_table  ).
+        result = view->ele( `Page` 
+                     )->a( n = `showHeader` b = abap_false ).
+        result->tag( n = `LPTitle` ns = `z2ui5` 
+            )->a( n = `title` v = mv_table ).
 
       ELSE.
-        result = view->page( title         = mv_table
-                             shownavbutton = abap_false ).
+        result = view->ele( `Page` 
+                     )->a( n = `title` v = mv_table 
+                     )->a( n = `showNavButton` b = abap_false ).
       ENDIF.
 
     ELSE.
 
-      result = mo_parent_view->get( `Page` ).
+      " embedded in a view cluster: the embedder hands over the node this app
+      " renders into. The frozen builder let us search the tree for the `Page`
+      " by name; the generic builder has no such lookup, so the node itself is
+      " what mo_parent_view carries now
+      result = mo_parent_view.
 
     ENDIF.
 
-    result->header_content( )->scroll_container( height   = '70%'
-                                                 vertical = abap_true ).
+    result->ele( `headerContent` 
+        )->ele( `ScrollContainer` 
+        )->a( n = `height` v = '70%' 
+        )->a( n = `vertical` b = abap_true ).
   ENDMETHOD.
 
   METHOD render_main_footer.
-    DATA(footer) = page->footer( )->overflow_toolbar(
-                     )->toolbar_spacer( ).
+    DATA(footer) = page->ele( `footer` 
+                       )->ele( `OverflowToolbar` 
+                       )->tag( `ToolbarSpacer` ).
 
     IF mv_multi_edit = abap_true.
-      footer->button( text  = get_txt( 'MLCCS_D_XDELETE' )
-                      type  = 'Reject'
-                      icon  = 'sap-icon://delete'
-                      press = client->_event( val = 'BUTTON_DELETE' )
-           )->button( text  = get_txt( '/SCMTMS/COCO_COPY_IND' )
-                      icon  = 'sap-icon://copy'
-                      press = client->_event( val = 'BUTTON_COPY' ) ).
+      footer->tag( `Button` 
+          )->a( n = `text` v = get_txt( 'MLCCS_D_XDELETE' ) 
+          )->a( n = `type` v = 'Reject' 
+          )->a( n = `icon` v = 'sap-icon://delete' 
+          )->a( n = `press` v = client->_event( val = 'BUTTON_DELETE' ) 
+          )->tag( `Button` 
+          )->a( n = `text` v = get_txt( '/SCMTMS/COCO_COPY_IND' ) 
+          )->a( n = `icon` v = 'sap-icon://copy' 
+          )->a( n = `press` v = client->_event( val = 'BUTTON_COPY' ) ).
     ENDIF.
 
-    footer->button( icon  = 'sap-icon://add'
-                    text  = get_txt( 'RSLPO_GUI_ADDPART' )
-                    press = client->_event( 'BUTTON_ADD' )
-                    type  = 'Default'
-         )->button( icon  = 'sap-icon://refresh'
-                    text  = get_txt( 'REFRESH_F8' )
-                    press = client->_event( 'BUTTON_REFRESH' )
-                    type  = 'Default'
-         )->button( enabled = client->_bind( mv_change_active )
-                    text    = get_txt( 'SICHERN' )
-                    press   = client->_event( 'BUTTON_SAVE' )
-                    type    = 'Success' ).
+    footer->tag( `Button` 
+        )->a( n = `icon` v = 'sap-icon://add' 
+        )->a( n = `text` v = get_txt( 'RSLPO_GUI_ADDPART' ) 
+        )->a( n = `press` v = client->_event( 'BUTTON_ADD' ) 
+        )->a( n = `type` v = 'Default' 
+        )->tag( `Button` 
+        )->a( n = `icon` v = 'sap-icon://refresh' 
+        )->a( n = `text` v = get_txt( 'REFRESH_F8' ) 
+        )->a( n = `press` v = client->_event( 'BUTTON_REFRESH' ) 
+        )->a( n = `type` v = 'Default' 
+        )->tag( `Button` 
+        )->a( n = `enabled` v = client->_bind( mv_change_active ) 
+        )->a( n = `text` v = get_txt( 'SICHERN' ) 
+        )->a( n = `press` v = client->_event( 'BUTTON_SAVE' ) 
+        )->a( n = `type` v = 'Success' ).
 
-    footer->menu_button( activeicon = 'sap-icon://action-settings'
-       )->_generic( `menu`
-          )->_generic( `Menu`
-             )->menu_item( icon  = 'sap-icon://shipping-status'
-                           text  = get_txt( 'ALLES_FUB' )
-                           press = client->_event( 'TRANSPORT_ALL' )
-             )->menu_item( icon  = 'sap-icon://shipping-status'
-                           text  = get_txt( 'FUNCCHANGE' )
-                           press = client->_event( 'TRANSPORT_CHANGE' )
-             )->menu_item( icon  = 'sap-icon://key-user-settings'
-                           text  = get_txt( 'POWL_ADMIN_TY' )
-                           press = client->_event( 'BUTTON_EDIT' ) ).
+    footer->ele( `MenuButton` 
+        )->a( n = `activeIcon` v = 'sap-icon://action-settings' 
+        )->ele( `menu` 
+        )->ele( `Menu` 
+        )->tag( `MenuItem` 
+        )->a( n = `icon`  v = 'sap-icon://shipping-status' 
+        )->a( n = `text`  v = get_txt( 'ALLES_FUB' ) 
+        )->a( n = `press` v = client->_event( 'TRANSPORT_ALL' ) 
+        )->tag( `MenuItem` 
+        )->a( n = `icon`  v = 'sap-icon://shipping-status' 
+        )->a( n = `text`  v = get_txt( 'FUNCCHANGE' ) 
+        )->a( n = `press` v = client->_event( 'TRANSPORT_CHANGE' ) 
+        )->tag( `MenuItem` 
+        )->a( n = `icon`  v = 'sap-icon://key-user-settings' 
+        )->a( n = `text`  v = get_txt( 'POWL_ADMIN_TY' ) 
+        )->a( n = `press` v = client->_event( 'BUTTON_EDIT' ) ).
 
     IF mo_parent_view IS INITIAL.
 
@@ -982,49 +1020,57 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
 
-    DATA(table) = page->flex_box( height = '85vh' )->ui_table( alternaterowcolors  = 'true'
-                                                               visiblerowcountmode = 'Auto'
-*                                                               fixedrowcount       = '1'
-                                                               selectionmode       = 'None'
-                                                               selectionbehavior   = 'RowSelector'
-                                                               rows                = client->_bind_edit( <tab> ) ).
+    DATA(table) = page->ele( `FlexBox` 
+                      )->a( n = `height` v = '85vh' 
+                      )->ele( n = `Table` ns = `table` 
+                      )->a( n = `alternateRowColors` v = 'true' 
+                      )->a( n = `visibleRowCountMode` v = 'Auto'
+*                                                               fixedrowcount       = '1' 
+                      )->a( n = `selectionMode` v = 'None' 
+                      )->a( n = `selectionBehavior` v = 'RowSelector' 
+                      )->a( n = `rows` v = client->_bind_edit( <tab> ) ).
 
     " TODO: variable is assigned but never used (ABAP cleaner)
-    DATA(toolbar) = table->ui_extension( )->overflow_toolbar( )->toolbar_spacer( ).
+    DATA(toolbar) = table->ele( n = `extension` ns = `table` 
+                        )->ele( `OverflowToolbar` 
+                        )->tag( `ToolbarSpacer` ).
 
     toolbar = z2ui5_cl_layo_pop=>render_layout_function( xml    = toolbar
                                                          client = client
                                                          layout = mo_layout ).
 
-    DATA(columns) = table->ui_columns( ).
+    DATA(columns) = table->ele( n = `columns` ns = `table` ).
 
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      DATA(col) = columns->ui_column(
-                      visible        = client->_bind( val       = layout->visible
+      DATA(col) = columns->ele( n = `Column` ns = `table` 
+                      )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                       tab       = mo_layout->ms_layout-t_layout
                                                       tab_index = lv_index )
 *                      halign         = client->_bind( val       = layout->halign
 *                      tab            = mo_layout->ms_layout-t_layout
-*                      tab_index      = lv_index )
-                      width          = COND #( WHEN layout->width IS NOT INITIAL
+*                      tab_index      = lv_index ) 
+                      )->a( n = `width` v = COND #( WHEN layout->width IS NOT INITIAL
                                                THEN client->_bind( val       = layout->width
                                                                    tab       = mo_layout->ms_layout-t_layout
-                                                                   tab_index = lv_index ) )
-
-                      sortproperty   = layout->fname
-                      filterproperty = layout->fname
-                              )->text( layout->tlabel )->ui_template( ).
+                                                                   tab_index = lv_index ) ) 
+                      )->a( n = `sortProperty` v = CONV string( layout->fname ) 
+                      )->a( n = `filterProperty` v = CONV string( layout->fname ) 
+                      )->tag( `Text` 
+                      )->a( n = `text` v = layout->tlabel 
+                      )->ele( n = `template` ns = `table` ).
 
       IF layout->fname = 'SELKZ'.
 
-        col->checkbox( selected = |\{{ layout->fname }\}| ).
+        col->tag( `CheckBox` 
+            )->a( n = `selected` v = |\{{ layout->fname }\}| ).
 
       ELSE.
 
-        col->input( submit = client->_event( val = 'INPUT' )
-                    value  = |\{{ layout->fname }\}| ).
+        col->tag( `Input` 
+            )->a( n = `submit` v = client->_event( val = 'INPUT' ) 
+            )->a( n = `value` v = |\{{ layout->fname }\}| ).
 
       ENDIF.
     ENDLOOP.
