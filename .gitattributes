@@ -1,0 +1,3 @@
+# ABAP and the generated trees are LF-only: a CRLF in a .abap file breaks the
+# abapGit round trip, and the diff that follows hides the real change.
+* text=auto eol=lf
