@@ -1,8 +1,15 @@
-[![ABAP_STANDARD](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_STANDARD.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_STANDARD.yaml)
-[![ABAP_CLOUD](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_CLOUD.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ABAP_CLOUD.yaml)
+[![ABAP](https://img.shields.io/badge/ABAP-Standard%20%E2%86%92%20Cloud-blue)](#install)
+[![namespace](https://img.shields.io/badge/namespace-z2ui5__cl__tm-blue)](abaplint.jsonc)
+[![dependency](https://img.shields.io/badge/dependency-abap2UI5-blue)](https://github.com/abap2UI5/abap2UI5)
 <br>
-[![auto_rename](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/rename_test.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/rename_test.yaml)
-
+[![abap-standard](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-standard.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-standard.yaml)
+[![abap-cloud](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-cloud.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-cloud.yaml)
+<br>
+[![check-abap2ui5](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-abap2ui5.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-abap2ui5.yaml)
+[![check-rename](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-rename.yaml/badge.svg)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-rename.yaml)
+<br>
+[![abap2UI5](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fabap2UI5-addons%2Ftable-maintenance%2Fmain%2F.github%2Fbadges%2Fabap2ui5.json)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-abap2ui5.yaml)
+[![check-abap2UI5](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fabap2UI5-addons%2Ftable-maintenance%2Fmain%2F.github%2Fbadges%2Fcheck-abap2ui5.json)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-abap2ui5.yaml)
 
 # table-maintenance
 Table Maintenance in Your Browser – No Need for Eclipse or SAP GUI Installation
