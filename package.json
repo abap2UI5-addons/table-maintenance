@@ -23,16 +23,16 @@
   },
   "homepage": "https://github.com/abap2UI5-addons/layout-management#readme",
   "devDependencies": {
-    "@abaplint/cli": "^2.119.66",
+    "@abaplint/cli": "^2.120.35",
     "@abaplint/database-sqlite": "^2.13.40",
-    "@abaplint/runtime": "^2.13.59",
-    "@abaplint/transpiler-cli": "^2.13.59",
-    "@types/node": "^26.2.0",
-    "@abap2ui5/linter": "^0.2.1",
-    "@abap2ui5/render-runtime": "^0.2.2"
+    "@abaplint/runtime": "^2.13.60",
+    "@abaplint/transpiler-cli": "^2.13.60",
+    "@types/node": "^26.3.0",
+    "@abap2ui5/linter": "^0.4.1",
+    "@abap2ui5/render-runtime": "^0.4.1"
   },
   "dependencies": {
-    "npm-check-updates": "^23.0.2"
+    "npm-check-updates": "^23.1.0"
   },
   "engines": {
     "node": ">=22"
