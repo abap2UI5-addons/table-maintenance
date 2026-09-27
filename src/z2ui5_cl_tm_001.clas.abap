@@ -655,7 +655,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                        )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
                        )->a( n = `xmlns:core` v = `sap.ui.core`
                        )->a( n = `xmlns:table` v = `sap.ui.table`
-                       )->a( n = `xmlns:z2ui5` v = `z2ui5.cc`
                        )->a( n = `displayBlock` v = `true`
                        )->a( n = `height` v = `100%` ). "->shell( ).
 
@@ -663,8 +662,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         result = view->ele( `Page`
                      )->a( n = `showHeader` b = abap_false ).
-        result->tag( n = `LPTitle` ns = `z2ui5`
-            )->a( n = `title` t = mv_table ).
+        " inside the launchpad the shell header carries the title, set once
+        " the response has been rendered
+        client->follow_up_action(
+            val   = z2ui5_if_client=>cs_event-set_title_launchpad
+            t_arg = VALUE #( ( mv_table ) ) ).
 
       ELSE.
         result = view->ele( `Page`
