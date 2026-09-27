@@ -3,7 +3,6 @@ CLASS z2ui5_cl_tm_pop DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
 
     DATA ms_fixval   TYPE REF TO data.
@@ -100,6 +99,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       on_init( ).
 
       render_popup( ).
+      RETURN.
 
     ENDIF.
 
@@ -162,23 +162,23 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     FIELD-SYMBOLS <row>      TYPE any.
     FIELD-SYMBOLS <s_fixval> TYPE any.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                      )->ele( n = `FragmentDefinition` ns = `core` 
-                      )->a( n = `xmlns` v = `sap.m` 
-                      )->a( n = `xmlns:core` v = `sap.ui.core` 
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core`
                       )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
     DATA(title) = COND #( WHEN mv_edit = abap_true THEN get_txt( 'CRMST_UIU_EDIT' ) ELSE get_txt( 'RSLPO_GUI_ADDPART' ) ).
 
-    DATA(dialog) = popup->ele( `Dialog` 
-                          )->a( n = `title` v = title 
-                          )->a( n = `contentWidth` v = '60%' 
+    DATA(dialog) = popup->ele( `Dialog`
+                          )->a( n = `title` t = title
+                          )->a( n = `contentWidth` v = '60%'
                           )->a( n = `afterClose` v = client->_event( 'POPUP_CLOSE' ) ).
 
-    DATA(simple_form) = dialog->ele( n = `SimpleForm` ns = `form` 
-                                )->a( n = `title` v = '' 
-                                )->a( n = `layout` v = 'ResponsiveGridLayout' 
-                                )->a( n = `editable` b = abap_true 
+    DATA(simple_form) = dialog->ele( n = `SimpleForm` ns = `form`
+                                )->a( n = `title` v = ''
+                                )->a( n = `layout` v = 'ResponsiveGridLayout'
+                                )->a( n = `editable` b = abap_true
                                 )->ele( n = `content` ns = `form` ).
 
     " Gehe über alle Comps wenn wir im Edit sind dann sind keyfelder nicht eingabebereit.
@@ -201,9 +201,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       DATA(text) = z2ui5_cl_util=>rtti_get_data_element_texts(
                        CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
-      simple_form->tag( `Label` 
-          )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' ) 
-          )->a( n = `text` v = text ).
+      simple_form->tag( `Label`
+          )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' )
+          )->a( n = `text` t = text ).
 
       ASSIGN ms_fixval->* TO <s_fixval>.
       ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <s_fixval> TO FIELD-SYMBOL(<struc>).
@@ -215,55 +215,55 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       IF dfies->checktable IS NOT INITIAL.
 
-        simple_form->tag( `Input` 
-            )->a( n = `value` v = client->_bind_edit( <val> ) 
-            )->a( n = `showValueHelp` b = abap_true 
-            )->a( n = `enabled` b = enabled 
-            )->a( n = `type` v = type 
-            )->a( n = `maxLength` v = dfies->leng 
+        simple_form->tag( `Input`
+            )->a( n = `value` v = client->_bind_edit( <val> )
+            )->a( n = `showValueHelp` b = abap_true
+            )->a( n = `enabled` b = enabled
+            )->a( n = `type` v = type
+            )->a( n = `maxLength` v = dfies->leng
             )->a( n = `valueHelpRequest` v = client->_event( val   = 'CALL_POPUP_F4'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
       ELSEIF dfies->mac IS NOT INITIAL.
 
-        simple_form->tag( `Input` 
-            )->a( n = `value` v = client->_bind_edit( <val> ) 
-            )->a( n = `showValueHelp` b = abap_true 
-            )->a( n = `enabled` b = enabled 
-            )->a( n = `type` v = type 
-            )->a( n = `maxLength` v = dfies->leng 
+        simple_form->tag( `Input`
+            )->a( n = `value` v = client->_bind_edit( <val> )
+            )->a( n = `showValueHelp` b = abap_true
+            )->a( n = `enabled` b = enabled
+            )->a( n = `type` v = type
+            )->a( n = `maxLength` v = dfies->leng
             )->a( n = `valueHelpRequest` v = client->_event( val   = 'CALL_POPUP_SHLP'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
       ELSEIF <struc> IS NOT INITIAL.
 
-        simple_form->ele( `ComboBox` 
-            )->a( n = `enabled` b = enabled 
-            )->a( n = `selectedKey` v = client->_bind_edit( <val> ) 
-            )->a( n = `items` v = client->_bind( <struc> ) 
-            )->tag( n = `Item` ns = `core` 
-            )->a( n = `key` v = '{LOW}' 
+        simple_form->ele( `ComboBox`
+            )->a( n = `enabled` b = enabled
+            )->a( n = `selectedKey` v = client->_bind_edit( <val> )
+            )->a( n = `items` v = client->_bind( <struc> )
+            )->tag( n = `Item` ns = `core`
+            )->a( n = `key` v = '{LOW}'
             )->a( n = `text` v = '{LOW} - {DESCR}' ).
 
       ELSE.
 
         IF dfies->inttype = 'D'.
 
-          simple_form->tag( `DatePicker` 
+          simple_form->tag( `DatePicker`
               )->a( n = `value` v = client->_bind_edit( <val> ) ).
 
         ELSEIF dfies->inttype = 'T'.
 
-          simple_form->tag( `TimePicker` 
+          simple_form->tag( `TimePicker`
               )->a( n = `value` v = client->_bind_edit( <val> ) ).
 
         ELSE.
 
-          simple_form->tag( `Input` 
-              )->a( n = `value` v = client->_bind_edit( <val> ) 
-              )->a( n = `showValueHelp` b = abap_false 
-              )->a( n = `enabled` b = enabled 
-              )->a( n = `type` v = type 
+          simple_form->tag( `Input`
+              )->a( n = `value` v = client->_bind_edit( <val> )
+              )->a( n = `showValueHelp` b = abap_false
+              )->a( n = `enabled` b = enabled
+              )->a( n = `type` v = type
               )->a( n = `maxLength` v = dfies->leng ).
 
         ENDIF.
@@ -278,8 +278,8 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                                   no = `512` ).
     " MESSAGE s512(prc_pri) INTO DATA(msg).
 
-    toolbar->tag( `Button` 
-        )->a( n = `text` v = ls_msg-text 
+    toolbar->tag( `Button`
+        )->a( n = `text` t = ls_msg-text
         )->a( n = `press` v = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_edit = abap_true.
@@ -288,10 +288,10 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                               no = `160` ).
       "  MESSAGE s160(islm_di_gen) INTO msg.
 
-      toolbar->tag( `Button` 
-          )->a( n = `text` v = ls_msg-text 
-          )->a( n = `type` v = 'Reject' 
-          )->a( n = `icon` v = 'sap-icon://delete' 
+      toolbar->tag( `Button`
+          )->a( n = `text` t = ls_msg-text
+          )->a( n = `type` v = 'Reject'
+          )->a( n = `icon` v = 'sap-icon://delete'
           )->a( n = `press` v = client->_event( val = 'POPUP_DELETE' ) ).
 
       ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'cnv_iuuc_replication'
@@ -299,10 +299,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       " MESSAGE s229(cnv_iuuc_replication) INTO msg.
 
       IF mv_copy = abap_true.
-        toolbar->tag( `Button` 
-            )->a( n = `text` v = ls_msg-text 
-            )->a( n = `type` v = 'Inform' 
-            )->a( n = `icon` v = 'sap-icon://copy' 
+        toolbar->tag( `Button`
+            )->a( n = `text` t = ls_msg-text
+            )->a( n = `icon` v = 'sap-icon://copy'
             )->a( n = `press` v = client->_event( val = 'POPUP_COPY' ) ).
       ENDIF.
     ENDIF.
@@ -311,9 +310,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                             no = `020` ).
     " MESSAGE s020(fsl_utilities) INTO msg.
 
-    toolbar->tag( `Button` 
-        )->a( n = `text` v = ls_msg-text 
-        )->a( n = `press` v = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) ) 
+    toolbar->tag( `Button`
+        )->a( n = `text` t = ls_msg-text
+        )->a( n = `press` v = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
         )->a( n = `type` v = 'Emphasized' ).
 
     client->popup_display( popup->stringify( ) ).
@@ -686,7 +685,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     TRY.
         DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( io_table ).
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
     TRY.
@@ -699,7 +698,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         CREATE DATA result->mt_data_tmp TYPE HANDLE new_table_desc.
         CREATE DATA result->ms_data_row TYPE HANDLE new_struct_desc.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
     ASSIGN io_table->* TO FIELD-SYMBOL(<io_table>).
@@ -760,7 +759,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         render_popup( ).
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
   ENDMETHOD.
 
@@ -791,7 +790,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         render_popup( ).
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
   ENDMETHOD.
 
@@ -818,7 +817,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       <line> = <row>.
       TRY.
           <value> = cl_system_uuid=>create_uuid_c32_static( ).
-        CATCH cx_root.
+        CATCH cx_root ##NO_HANDLER.
       ENDTRY.
       mv_row_id = <value>.
     ENDIF.

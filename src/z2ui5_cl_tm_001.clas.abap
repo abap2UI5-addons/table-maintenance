@@ -3,7 +3,6 @@ CLASS z2ui5_cl_tm_001 DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
     INTERFACES z2ui5_if_tm_001.
 
@@ -17,7 +16,6 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mv_search_value TYPE string.
     DATA mt_table        TYPE REF TO data.
-    DATA mv_table        TYPE string.
     DATA mt_table_tmp    TYPE REF TO data.
     DATA mt_table_del    TYPE REF TO data.
     DATA mt_table_org    TYPE REF TO data.
@@ -32,6 +30,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
       END OF ty_s_keys.
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
 
+    DATA mv_table          TYPE string.
     DATA mt_dfies          TYPE z2ui5_cl_util_ext=>ty_t_dfies.
     DATA client            TYPE REF TO z2ui5_if_client.
     DATA check_initialized TYPE abap_bool.
@@ -195,8 +194,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       DELETE ADJACENT DUPLICATES FROM keys COMPARING key.
       IF lines( keys ) <> lines( keys_tmp ).
         client->message_box_display( text = `Duplicate entries error.`
-                                     type = `error`
-                                     icon = `sap-icon://key` ).
+                                     type = `error` ).
 
         RETURN.
       ENDIF.
@@ -219,7 +217,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           MOVE-CORRESPONDING <del> TO <del_org>.
           MOVE-CORRESPONDING <tab> TO <tab_org>.
 
-        CATCH cx_root.
+        CATCH cx_root ##NO_HANDLER.
 
       ENDTRY.
 
@@ -286,7 +284,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
           ENDIF.
 
-        CATCH cx_root INTO DATA(cx). " TODO: variable is assigned but never used (ABAP cleaner)
+        CATCH cx_root ##NO_HANDLER.
       ENDTRY.
 
     ENDIF.
@@ -364,7 +362,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           MOVE-CORRESPONDING <del> TO <del_org>.
           MOVE-CORRESPONDING <tab> TO <tab_org>.
 
-        CATCH cx_root.
+        CATCH cx_root ##NO_HANDLER.
 
       ENDTRY.
       TRY.
@@ -414,7 +412,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         APPEND LINES OF comp TO result.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
   ENDMETHOD.
 
@@ -442,7 +440,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         SORT <table>.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
 
     ENDTRY.
 
@@ -537,29 +535,29 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
 
-    DATA(table) = page->ele( `Table` 
-                      )->a( n = `growing` v = 'true' 
-                      )->a( n = `growingThreshold` v = '100' 
-                      )->a( n = `width` v = 'auto' 
-                      )->a( n = `sticky` v = `ColumnHeaders` 
-                      )->a( n = `autoPopinMode` b = abap_true 
-                      )->a( n = `items` v = client->_bind_edit( <tab> ) 
-                      )->a( n = `headerText` v = mv_table ).
+    DATA(table) = page->ele( `Table`
+                      )->a( n = `growing` v = 'true'
+                      )->a( n = `growingThreshold` v = '100'
+                      )->a( n = `width` v = 'auto'
+                      )->a( n = `sticky` v = `ColumnHeaders`
+                      )->a( n = `autoPopinMode` b = abap_true
+                      )->a( n = `items` v = client->_bind_edit( <tab> )
+                      )->a( n = `headerText` t = mv_table ).
 
-    DATA(headder) = table->ele( `headerToolbar` 
-                        )->ele( `OverflowToolbar` 
-                        )->tag( `Title` 
-                        )->a( n = `text` v = mv_table 
-                        )->tag( `ToolbarSpacer` 
-                        )->tag( `SearchField` 
-                        )->a( n = `value` v = client->_bind_edit( mv_search_value ) 
-                        )->a( n = `search` v = client->_event( 'BUTTON_SEARCH' ) 
-                        )->a( n = `change` v = client->_event( 'BUTTON_SEARCH' ) 
-                        )->a( n = `id` v = `SEARCH` 
+    DATA(headder) = table->ele( `headerToolbar`
+                        )->ele( `OverflowToolbar`
+                        )->tag( `Title`
+                        )->a( n = `text` t = mv_table
+                        )->tag( `ToolbarSpacer`
+                        )->tag( `SearchField`
+                        )->a( n = `value` v = client->_bind_edit( mv_search_value )
+                        )->a( n = `search` v = client->_event( 'BUTTON_SEARCH' )
+                        )->a( n = `change` v = client->_event( 'BUTTON_SEARCH' )
+                        )->a( n = `id` v = `SEARCH`
                         )->a( n = `width` v = '17.5rem' ).
 
-    headder->tag( `Button` 
-        )->a( n = `icon` v = 'sap-icon://action-settings' 
+    headder->tag( `Button`
+        )->a( n = `icon` v = 'sap-icon://action-settings'
         )->a( n = `press` v = client->_event( val = mo_layout->ms_layout-s_head-guid ) ).
 
     DATA(columns) = table->ele( `columns` ).
@@ -567,7 +565,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      columns->ele( `Column` 
+      columns->ele( `Column`
           )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                         tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
@@ -576,26 +574,26 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 *                       tab_index       = lv_index )
 *                       importance      = client->_bind( val       = layout->importance
 *                       tab             = mo_layout->ms_layout-t_layout
-*                       tab_index       = lv_index ) 
+*                       tab_index       = lv_index )
           )->a( n = `mergeDuplicates` v = client->_bind( val       = layout->merge
                                                         tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index ) 
+                                                        tab_index = lv_index )
           )->a( n = `width` v = client->_bind( val       = layout->width
                                                         tab       = mo_layout->ms_layout-t_layout
-                                                        tab_index = lv_index ) 
-          )->tag( `Text` 
+                                                        tab_index = lv_index )
+          )->tag( `Text`
           )->a( n = `text` v = layout->tlabel ).
 
     ENDLOOP.
 
-    DATA(cells) = columns->end( 
-                      )->ele( `items` 
-                      )->ele( `ColumnListItem` 
-                      )->a( n = `vAlign` v = 'Middle' 
+    DATA(cells) = columns->end(
+                      )->ele( `items`
+                      )->ele( `ColumnListItem`
+                      )->a( n = `vAlign` v = 'Middle'
                       )->a( n = `type` v = 'Navigation'
-*                                           type   = 'Active' 
+*                                           type   = 'Active'
                       )->a( n = `press` v = client->_event( val   = 'ROW_SELECT'
-                                                                    t_arg = VALUE #( ( `${ROW_ID}`  ) ) ) 
+                                                                    arg   = `${ROW_ID}` )
                       )->ele( `cells` ).
 
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
@@ -625,21 +623,22 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDLOOP.
 
         IF layout->reference_field IS NOT INITIAL.
-          cells->ele( `ObjectIdentifier` 
-              )->a( n = `title` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| 
+          cells->ele( `ObjectIdentifier`
+              )->a( n = `title` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}|
+              " abap2ui5lint-disable-next-line unescaped-text-in-attribute -- sub_col is a composite binding ({FIELD} per sub column), not literal text
               )->a( n = `text` v = sub_col ).
         ELSE.
-          cells->ele( `ObjectIdentifier` 
-              )->a( n = `title` v = |\{{ layout->fname }\}| 
+          cells->ele( `ObjectIdentifier`
+              )->a( n = `title` v = |\{{ layout->fname }\}|
               )->a( n = `text` v = sub_col ).
         ENDIF.
 
       ELSE.
         IF layout->reference_field IS NOT INITIAL.
-          cells->ele( `ObjectIdentifier` 
+          cells->ele( `ObjectIdentifier`
               )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
         ELSE.
-          cells->ele( `ObjectIdentifier` 
+          cells->ele( `ObjectIdentifier`
               )->a( n = `text` v = |\{{ layout->fname }\}| ).
         ENDIF.
       ENDIF.
@@ -650,26 +649,26 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD render_main_head.
     IF mo_parent_view IS INITIAL.
 
-      DATA(view) = z2ui5_cl_ui5_view_builder=>factory( 
-                       )->ele( n = `View` ns = `mvc` 
-                       )->a( n = `xmlns` v = `sap.m` 
-                       )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc` 
-                       )->a( n = `xmlns:core` v = `sap.ui.core` 
-                       )->a( n = `xmlns:table` v = `sap.ui.table` 
-                       )->a( n = `xmlns:z2ui5` v = `z2ui5.cc` 
-                       )->a( n = `displayBlock` v = `true` 
+      DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+                       )->ele( n = `View` ns = `mvc`
+                       )->a( n = `xmlns` v = `sap.m`
+                       )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
+                       )->a( n = `xmlns:core` v = `sap.ui.core`
+                       )->a( n = `xmlns:table` v = `sap.ui.table`
+                       )->a( n = `xmlns:z2ui5` v = `z2ui5.cc`
+                       )->a( n = `displayBlock` v = `true`
                        )->a( n = `height` v = `100%` ). "->shell( ).
 
       IF client->get( )-check_launchpad_active = abap_true.
 
-        result = view->ele( `Page` 
+        result = view->ele( `Page`
                      )->a( n = `showHeader` b = abap_false ).
-        result->tag( n = `LPTitle` ns = `z2ui5` 
-            )->a( n = `title` v = mv_table ).
+        result->tag( n = `LPTitle` ns = `z2ui5`
+            )->a( n = `title` t = mv_table ).
 
       ELSE.
-        result = view->ele( `Page` 
-                     )->a( n = `title` v = mv_table 
+        result = view->ele( `Page`
+                     )->a( n = `title` t = mv_table
                      )->a( n = `showNavButton` b = abap_false ).
       ENDIF.
 
@@ -683,60 +682,60 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ENDIF.
 
-    result->ele( `headerContent` 
-        )->ele( `ScrollContainer` 
-        )->a( n = `height` v = '70%' 
+    result->ele( `headerContent`
+        )->ele( `ScrollContainer`
+        )->a( n = `height` v = '70%'
         )->a( n = `vertical` b = abap_true ).
   ENDMETHOD.
 
   METHOD render_main_footer.
-    DATA(footer) = page->ele( `footer` 
-                       )->ele( `OverflowToolbar` 
+    DATA(footer) = page->ele( `footer`
+                       )->ele( `OverflowToolbar`
                        )->tag( `ToolbarSpacer` ).
 
     IF mv_multi_edit = abap_true.
-      footer->tag( `Button` 
-          )->a( n = `text` v = get_txt( 'MLCCS_D_XDELETE' ) 
-          )->a( n = `type` v = 'Reject' 
-          )->a( n = `icon` v = 'sap-icon://delete' 
-          )->a( n = `press` v = client->_event( val = 'BUTTON_DELETE' ) 
-          )->tag( `Button` 
-          )->a( n = `text` v = get_txt( '/SCMTMS/COCO_COPY_IND' ) 
-          )->a( n = `icon` v = 'sap-icon://copy' 
+      footer->tag( `Button`
+          )->a( n = `text` v = get_txt( 'MLCCS_D_XDELETE' )
+          )->a( n = `type` v = 'Reject'
+          )->a( n = `icon` v = 'sap-icon://delete'
+          )->a( n = `press` v = client->_event( val = 'BUTTON_DELETE' )
+          )->tag( `Button`
+          )->a( n = `text` v = get_txt( '/SCMTMS/COCO_COPY_IND' )
+          )->a( n = `icon` v = 'sap-icon://copy'
           )->a( n = `press` v = client->_event( val = 'BUTTON_COPY' ) ).
     ENDIF.
 
-    footer->tag( `Button` 
-        )->a( n = `icon` v = 'sap-icon://add' 
-        )->a( n = `text` v = get_txt( 'RSLPO_GUI_ADDPART' ) 
-        )->a( n = `press` v = client->_event( 'BUTTON_ADD' ) 
-        )->a( n = `type` v = 'Default' 
-        )->tag( `Button` 
-        )->a( n = `icon` v = 'sap-icon://refresh' 
-        )->a( n = `text` v = get_txt( 'REFRESH_F8' ) 
-        )->a( n = `press` v = client->_event( 'BUTTON_REFRESH' ) 
-        )->a( n = `type` v = 'Default' 
-        )->tag( `Button` 
-        )->a( n = `enabled` v = client->_bind( mv_change_active ) 
-        )->a( n = `text` v = get_txt( 'SICHERN' ) 
-        )->a( n = `press` v = client->_event( 'BUTTON_SAVE' ) 
+    footer->tag( `Button`
+        )->a( n = `icon` v = 'sap-icon://add'
+        )->a( n = `text` v = get_txt( 'RSLPO_GUI_ADDPART' )
+        )->a( n = `press` v = client->_event( 'BUTTON_ADD' )
+        )->a( n = `type` v = 'Default'
+        )->tag( `Button`
+        )->a( n = `icon` v = 'sap-icon://refresh'
+        )->a( n = `text` v = get_txt( 'REFRESH_F8' )
+        )->a( n = `press` v = client->_event( 'BUTTON_REFRESH' )
+        )->a( n = `type` v = 'Default'
+        )->tag( `Button`
+        )->a( n = `enabled` v = client->_bind( mv_change_active )
+        )->a( n = `text` v = get_txt( 'SICHERN' )
+        )->a( n = `press` v = client->_event( 'BUTTON_SAVE' )
         )->a( n = `type` v = 'Success' ).
 
-    footer->ele( `MenuButton` 
-        )->a( n = `activeIcon` v = 'sap-icon://action-settings' 
-        )->ele( `menu` 
-        )->ele( `Menu` 
-        )->tag( `MenuItem` 
-        )->a( n = `icon`  v = 'sap-icon://shipping-status' 
-        )->a( n = `text`  v = get_txt( 'ALLES_FUB' ) 
-        )->a( n = `press` v = client->_event( 'TRANSPORT_ALL' ) 
-        )->tag( `MenuItem` 
-        )->a( n = `icon`  v = 'sap-icon://shipping-status' 
-        )->a( n = `text`  v = get_txt( 'FUNCCHANGE' ) 
-        )->a( n = `press` v = client->_event( 'TRANSPORT_CHANGE' ) 
-        )->tag( `MenuItem` 
-        )->a( n = `icon`  v = 'sap-icon://key-user-settings' 
-        )->a( n = `text`  v = get_txt( 'POWL_ADMIN_TY' ) 
+    footer->ele( `MenuButton`
+        )->a( n = `activeIcon` v = 'sap-icon://action-settings'
+        )->ele( `menu`
+        )->ele( `Menu`
+        )->tag( `MenuItem`
+        )->a( n = `icon`  v = 'sap-icon://shipping-status'
+        )->a( n = `text`  v = get_txt( 'ALLES_FUB' )
+        )->a( n = `press` v = client->_event( 'TRANSPORT_ALL' )
+        )->tag( `MenuItem`
+        )->a( n = `icon`  v = 'sap-icon://shipping-status'
+        )->a( n = `text`  v = get_txt( 'FUNCCHANGE' )
+        )->a( n = `press` v = client->_event( 'TRANSPORT_CHANGE' )
+        )->tag( `MenuItem`
+        )->a( n = `icon`  v = 'sap-icon://key-user-settings'
+        )->a( n = `text`  v = get_txt( 'POWL_ADMIN_TY' )
         )->a( n = `press` v = client->_event( 'BUTTON_EDIT' ) ).
 
     IF mo_parent_view IS INITIAL.
@@ -815,7 +814,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         TRY.
             <row> = cl_system_uuid=>create_uuid_c32_static( ).
-          CATCH cx_root.
+          CATCH cx_root ##NO_HANDLER.
         ENDTRY.
 
       ENDIF.
@@ -938,7 +937,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           view_model_update( ).
 
         ENDIF.
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
   ENDMETHOD.
@@ -992,7 +991,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         view_model_update( ).
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
   ENDMETHOD.
 
@@ -1020,19 +1019,19 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
 
-    DATA(table) = page->ele( `FlexBox` 
-                      )->a( n = `height` v = '85vh' 
-                      )->ele( n = `Table` ns = `table` 
-                      )->a( n = `alternateRowColors` v = 'true' 
+    DATA(table) = page->ele( `FlexBox`
+                      )->a( n = `height` v = '85vh'
+                      )->ele( n = `Table` ns = `table`
+                      )->a( n = `alternateRowColors` v = 'true'
                       )->a( n = `visibleRowCountMode` v = 'Auto'
-*                                                               fixedrowcount       = '1' 
-                      )->a( n = `selectionMode` v = 'None' 
-                      )->a( n = `selectionBehavior` v = 'RowSelector' 
+*                                                               fixedrowcount       = '1'
+                      )->a( n = `selectionMode` v = 'None'
+                      )->a( n = `selectionBehavior` v = 'RowSelector'
                       )->a( n = `rows` v = client->_bind_edit( <tab> ) ).
 
     " TODO: variable is assigned but never used (ABAP cleaner)
-    DATA(toolbar) = table->ele( n = `extension` ns = `table` 
-                        )->ele( `OverflowToolbar` 
+    DATA(toolbar) = table->ele( n = `extension` ns = `table`
+                        )->ele( `OverflowToolbar`
                         )->tag( `ToolbarSpacer` ).
 
     toolbar = z2ui5_cl_layo_pop=>render_layout_function( xml    = toolbar
@@ -1044,32 +1043,32 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      DATA(col) = columns->ele( n = `Column` ns = `table` 
+      DATA(col) = columns->ele( n = `Column` ns = `table`
                       )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                       tab       = mo_layout->ms_layout-t_layout
                                                       tab_index = lv_index )
 *                      halign         = client->_bind( val       = layout->halign
 *                      tab            = mo_layout->ms_layout-t_layout
-*                      tab_index      = lv_index ) 
+*                      tab_index      = lv_index )
                       )->a( n = `width` v = COND #( WHEN layout->width IS NOT INITIAL
                                                THEN client->_bind( val       = layout->width
                                                                    tab       = mo_layout->ms_layout-t_layout
-                                                                   tab_index = lv_index ) ) 
-                      )->a( n = `sortProperty` v = CONV string( layout->fname ) 
-                      )->a( n = `filterProperty` v = CONV string( layout->fname ) 
-                      )->tag( `Text` 
-                      )->a( n = `text` v = layout->tlabel 
+                                                                   tab_index = lv_index ) )
+                      )->a( n = `sortProperty` v = CONV string( layout->fname )
+                      )->a( n = `filterProperty` v = CONV string( layout->fname )
+                      )->tag( `Text`
+                      )->a( n = `text` v = layout->tlabel
                       )->ele( n = `template` ns = `table` ).
 
       IF layout->fname = 'SELKZ'.
 
-        col->tag( `CheckBox` 
+        col->tag( `CheckBox`
             )->a( n = `selected` v = |\{{ layout->fname }\}| ).
 
       ELSE.
 
-        col->tag( `Input` 
-            )->a( n = `submit` v = client->_event( val = 'INPUT' ) 
+        col->tag( `Input`
+            )->a( n = `submit` v = client->_event( val = 'INPUT' )
             )->a( n = `value` v = |\{{ layout->fname }\}| ).
 
       ENDIF.
@@ -1317,7 +1316,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         view_model_update( ).
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
   ENDMETHOD.
