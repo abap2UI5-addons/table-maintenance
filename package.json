@@ -1,8 +1,8 @@
 {
-  "name": "abap2ui5-layout-variant-management",
+  "name": "table-maintenance",
   "private": true,
   "version": "1.0.0",
-  "description": "Layout Management for abap2UI5.",
+  "description": "Table maintenance in the browser - edit data and customizing entries with value help, fixed values and transport handling.",
   "scripts": {
     "syfixes": "find . -type f -name '*.abap' -exec sed -i -e 's/ RAISE EXCEPTION TYPE cx_sy_itab_line_not_found/ ASSERT 1 = 0/g' {} + ",
     "downport": "abaplint --fix .github/abaplint/abap_702.jsonc && npm run syfixes",
@@ -15,13 +15,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/abap2UI5-addons/layout-management.git"
+    "url": "git+https://github.com/abap2UI5-addons/table-maintenance.git"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/abap2UI5-addons/layout-management.git"
+    "url": "https://github.com/abap2UI5-addons/table-maintenance/issues"
   },
-  "homepage": "https://github.com/abap2UI5-addons/layout-management#readme",
+  "homepage": "https://github.com/abap2UI5-addons/table-maintenance#readme",
   "devDependencies": {
     "@abap2ui5/linter": "^0.8.3",
     "@abap2ui5/linter-render": "^0.8.3",
