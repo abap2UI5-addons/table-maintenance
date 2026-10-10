@@ -128,18 +128,23 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ASSIGN mt_data->* TO <tab>.
 
+    DATA(found) = abap_false.
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
       IF <row_id> IS ASSIGNED.
         IF <row_id> = mv_row_id.
+          found = abap_true.
           EXIT.
         ENDIF.
       ENDIF.
 
     ENDLOOP.
 
-    IF <line> IS NOT ASSIGNED.
+    " a LOOP leaves <line> on the last row when nothing matched - that row
+    " must not be shown (and saved) as the one the user picked
+    IF found = abap_false.
+      client->message_toast_display( `The entry is no longer in the list.` ).
       RETURN.
     ENDIF.
 
