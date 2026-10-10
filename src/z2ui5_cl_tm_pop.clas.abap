@@ -202,7 +202,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                        CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
       simple_form->tag( `Label`
-          )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' )
+          )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN `Bold` ELSE `Standard` )
           )->a( n = `text` t = text ).
 
       ASSIGN ms_fixval->* TO <s_fixval>.
@@ -471,6 +471,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       WHEN 'I' OR 'b' OR 's' OR 'p' OR 'F' OR 'b' OR 'N'.
         result = 'Number'.
       WHEN OTHERS.
+        result = 'Text'.
     ENDCASE.
 
   ENDMETHOD.
