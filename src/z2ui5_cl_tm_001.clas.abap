@@ -21,6 +21,9 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mt_table_org    TYPE REF TO data.
     " the table name typed in when the app was started without one
     DATA mv_table_input  TYPE string.
+    " the table input is shown until a table is opened - embedded, it stays
+    " in the embedder's page, which the builder cannot remove it from
+    DATA mv_check_table_input TYPE abap_bool.
 
     CONSTANTS mc_row_id TYPE string VALUE `ROW_ID` ##NO_TEXT.
 
@@ -1362,8 +1365,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       page = mo_parent_view.
     ENDIF.
 
+    mv_check_table_input = abap_true.
+
     page->ele( `VBox`
         )->a( n = `class` v = `sapUiSmallMargin`
+        )->a( n = `visible` v = client->_bind( mv_check_table_input )
         )->ele( `items`
         )->tag( `MessageStrip`
         )->a( n = `text` v = `Enter the table to maintain, or start the app with the URL parameter table.`
@@ -1410,6 +1416,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
 
         mv_table = table.
+        mv_check_table_input = abap_false.
 
         on_init( ).
 
