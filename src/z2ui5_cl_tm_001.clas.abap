@@ -303,7 +303,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
 
-      LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true.
+      " the client is left out: the rows read are all of the logon client, a row
+      " added in the popup has an empty one, and the database writes both to the
+      " logon client - with it, an added row never matched the row it overwrites
+      LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
         ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO FIELD-SYMBOL(<key>).
 

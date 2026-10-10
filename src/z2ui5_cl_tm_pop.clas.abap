@@ -506,21 +506,31 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     FIELD-SYMBOLS <row> TYPE any.
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
 
-    " create dynamic where condition
-    LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true.
+    " create dynamic where condition - without the client: every row here is
+    " of the logon client, but a new row carries an empty one until it is saved
+    LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
       ASSIGN ms_data_row->* TO <row>.
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
       IF sy-subrc = 0.
+        " a backtick in the value would end the literal early
+        DATA(lv_value) = replace( val  = |{ <value_struc> }|
+                                  sub  = '`'
+                                  with = '``'
+                                  occ  = 0 ).
         IF lv_where IS INITIAL.
-          lv_where = |{ dfies-fieldname } = `{ <value_struc> }`|.
+          lv_where = |{ dfies-fieldname } = `{ lv_value }`|.
         ELSE.
-          DATA(lv_where_and) = |AND { dfies-fieldname } = `{ <value_struc> }`|.
+          DATA(lv_where_and) = |AND { dfies-fieldname } = `{ lv_value }`|.
           CONCATENATE lv_where lv_where_and INTO lv_where SEPARATED BY space.
         ENDIF.
       ENDIF.
     ENDLOOP.
+
+    IF lv_where IS INITIAL.
+      RETURN.
+    ENDIF.
 
     ASSIGN mt_data->* TO <tab>.
 
