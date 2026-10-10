@@ -19,6 +19,11 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mt_table_tmp    TYPE REF TO data.
     DATA mt_table_del    TYPE REF TO data.
     DATA mt_table_org    TYPE REF TO data.
+    " the table name typed in when the app was started without one
+    DATA mv_table_input  TYPE string.
+    " the table input is shown until a table is opened - embedded, it stays
+    " in the embedder's page, which the builder cannot remove it from
+    DATA mv_check_table_input TYPE abap_bool.
 
     CONSTANTS mc_row_id TYPE string VALUE `ROW_ID` ##NO_TEXT.
 
@@ -91,6 +96,10 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     METHODS on_event_layout.
 
     METHODS get_table_name.
+
+    METHODS render_table_input.
+
+    METHODS on_event_table_input.
 
     METHODS on_after_layout.
 
@@ -302,12 +311,20 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
 
       DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
+      DATA(value) = ``.
 
-      LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true.
+      " the client is left out: the rows read are all of the logon client, a row
+      " added in the popup has an empty one, and the database writes both to the
+      " logon client - with it, an added row never matched the row it overwrites
+      LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
         ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO FIELD-SYMBOL(<key>).
 
-        keys-key = keys-key && <key>.
+        " each value with its length in front: plain concatenation made
+        " A + BC and AB + C the same key and reported a duplicate that
+        " was none
+        value = |{ <key> }|.
+        keys-key = |{ keys-key }{ strlen( value ) }:{ value }|.
 
       ENDLOOP.
 
@@ -503,13 +520,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       tab = VALUE #( startup_params[ n = 'table' ]-v OPTIONAL ).
     ENDIF.
 
-    tab = to_upper( tab ).
-
-    IF tab IS INITIAL.
-      mv_table = 'USR01'. " FALLBACK
-    ELSE.
-      mv_table = tab.
-    ENDIF.
+    " no fallback table: without the parameter the app asks for one
+    " (render_table_input) instead of opening a table nobody chose
+    mv_table = to_upper( tab ).
 
   ENDMETHOD.
 
@@ -829,10 +842,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     IF check_initialized = abap_false.
       check_initialized = abap_true.
 
+      get_table_name( ).
+      IF mv_table IS INITIAL.
+        render_table_input( ).
+        RETURN.
+      ENDIF.
+
       on_init( ).
 
       render_main( ).
 
+    ENDIF.
+
+    IF mv_table IS INITIAL.
+      on_event_table_input( ).
+      RETURN.
     ENDIF.
 
     on_after_popup( ).
@@ -1320,6 +1344,85 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD render_table_input.
+
+    IF mo_parent_view IS INITIAL.
+
+      DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+                       )->ele( n = `View` ns = `mvc`
+                       )->a( n = `xmlns` v = `sap.m`
+                       )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
+                       )->a( n = `displayBlock` v = `true`
+                       )->a( n = `height` v = `100%` ).
+
+      DATA(page) = view->ele( `Page`
+                       )->a( n = `title` v = `Table Maintenance` ).
+
+    ELSE.
+      page = mo_parent_view.
+    ENDIF.
+
+    mv_check_table_input = abap_true.
+
+    page->ele( `VBox`
+        )->a( n = `class` v = `sapUiSmallMargin`
+        )->a( n = `visible` v = client->_bind( mv_check_table_input )
+        )->ele( `items`
+        )->tag( `MessageStrip`
+        )->a( n = `text` v = `Enter the table to maintain, or start the app with the URL parameter table.`
+        )->a( n = `type` v = `Information`
+        )->a( n = `showIcon` b = abap_true
+        )->a( n = `class` v = `sapUiSmallMarginBottom`
+        )->tag( `Input`
+        )->a( n = `value` v = client->_bind( mv_table_input )
+        )->a( n = `placeholder` v = `Table name`
+        )->a( n = `width` v = `20rem`
+        )->a( n = `submit` v = client->_event( `TABLE_OPEN` )
+        )->tag( `Button`
+        )->a( n = `text` v = `Open`
+        )->a( n = `type` v = `Emphasized`
+        )->a( n = `press` v = client->_event( `TABLE_OPEN` ) ).
+
+    IF mo_parent_view IS INITIAL.
+      client->view_display( view->stringify( ) ).
+    ELSE.
+      mv_view_display = abap_true.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD on_event_table_input.
+
+    CASE client->get( )-event.
+
+      WHEN `TABLE_OPEN`.
+
+        DATA(table) = to_upper( condense( mv_table_input ) ).
+        IF table IS INITIAL.
+          client->message_toast_display( `Enter a table name.` ).
+          RETURN.
+        ENDIF.
+
+        cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
+                                             RECEIVING  p_descr_ref    = DATA(descr)
+                                             EXCEPTIONS type_not_found = 1
+                                                        OTHERS         = 2 ).
+        IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
+          client->message_toast_display( |Table { table } does not exist.| ).
+          RETURN.
+        ENDIF.
+
+        mv_table = table.
+        mv_check_table_input = abap_false.
+
+        on_init( ).
+
+        render_main( ).
+
+    ENDCASE.
 
   ENDMETHOD.
 
