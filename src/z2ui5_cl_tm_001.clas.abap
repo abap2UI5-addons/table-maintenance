@@ -1401,10 +1401,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
 
         cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
-                                             RECEIVING  p_descr_ref    = DATA(type)
+                                             RECEIVING  p_descr_ref    = DATA(descr)
                                              EXCEPTIONS type_not_found = 1
                                                         OTHERS         = 2 ).
-        IF sy-subrc <> 0 OR type->kind <> cl_abap_typedescr=>kind_struct.
+        IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
           client->message_toast_display( |Table { table } does not exist.| ).
           RETURN.
         ENDIF.

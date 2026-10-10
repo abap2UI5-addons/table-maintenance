@@ -142,7 +142,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ENDLOOP.
 
     " a LOOP leaves <line> on the last row when nothing matched - that row
-    " must not be shown (and saved) as the one the user picked
+    " must not be shown as the one the user picked
     IF found = abap_false.
       client->message_toast_display( `The entry is no longer in the list.` ).
       RETURN.
