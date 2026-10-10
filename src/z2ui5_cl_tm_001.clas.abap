@@ -302,6 +302,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
 
       DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
+      DATA(value) = ``.
 
       " the client is left out: the rows read are all of the logon client, a row
       " added in the popup has an empty one, and the database writes both to the
@@ -310,7 +311,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO FIELD-SYMBOL(<key>).
 
-        keys-key = keys-key && <key>.
+        " each value with its length in front: plain concatenation made
+        " A + BC and AB + C the same key and reported a duplicate that
+        " was none
+        value = |{ <key> }|.
+        keys-key = |{ keys-key }{ strlen( value ) }:{ value }|.
 
       ENDLOOP.
 
