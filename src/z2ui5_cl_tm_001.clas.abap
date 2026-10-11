@@ -539,6 +539,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     " no fallback table: without the parameter the app asks for one
     " (render_table_input) instead of opening a table nobody chose
     mv_table = to_upper( tab ).
+    IF mv_table IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " a name that is no table left get_data without a table to fill - a
+    " short dump; the app asks for the table instead, as without the parameter
+    cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = mv_table
+                                         RECEIVING  p_descr_ref    = DATA(descr)
+                                         EXCEPTIONS type_not_found = 1
+                                                    OTHERS         = 2 ).
+    IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
+      client->message_toast_display( |Table { mv_table } does not exist.| ).
+      mv_table_input = mv_table.
+      CLEAR mv_table.
+    ENDIF.
 
   ENDMETHOD.
 
