@@ -274,6 +274,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
               client->message_toast_display( ls_msg-text ).
 
               CLEAR mv_change_active.
+            ELSE.
+              " not every row could be written - undone instead of left in
+              " the LUW for the next commit to write half of it
+              ROLLBACK WORK.
+              client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
+                                           type = `error` ).
             ENDIF.
 
           ELSE.
@@ -289,11 +295,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
               client->message_toast_display( ls_msg-text ).
 
               CLEAR mv_change_active.
+            ELSE.
+              ROLLBACK WORK.
+              client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
+                                           type = `error` ).
             ENDIF.
 
           ENDIF.
 
-        CATCH cx_root ##NO_HANDLER.
+        CATCH cx_root INTO DATA(lx_db).
+          " a failed write (a duplicate key on INSERT, a value the column
+          " does not take) used to end here without a word, the rows
+          " deleted just before still waiting in the LUW
+          ROLLBACK WORK.
+          client->message_box_display( text = lx_db->get_text( )
+                                       type = `error` ).
       ENDTRY.
 
     ENDIF.
