@@ -66,7 +66,7 @@ URL parameter `table`:
 ```
 
 Without the parameter (and without a launchpad startup parameter `table`) the
-app opens `USR01`.
+app opens no table; it asks for the table name first.
 
 ## Usage
 

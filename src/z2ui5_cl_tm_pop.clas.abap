@@ -128,18 +128,23 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ASSIGN mt_data->* TO <tab>.
 
+    DATA(found) = abap_false.
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
       IF <row_id> IS ASSIGNED.
         IF <row_id> = mv_row_id.
+          found = abap_true.
           EXIT.
         ENDIF.
       ENDIF.
 
     ENDLOOP.
 
-    IF <line> IS NOT ASSIGNED.
+    " a LOOP leaves <line> on the last row when nothing matched - that row
+    " must not be shown as the one the user picked
+    IF found = abap_false.
+      client->message_toast_display( `The entry is no longer in the list.` ).
       RETURN.
     ENDIF.
 
@@ -202,7 +207,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                        CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
       simple_form->tag( `Label`
-          )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN 'Bold' )
+          )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN `Bold` ELSE `Standard` )
           )->a( n = `text` t = text ).
 
       ASSIGN ms_fixval->* TO <s_fixval>.
@@ -471,6 +476,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       WHEN 'I' OR 'b' OR 's' OR 'p' OR 'F' OR 'b' OR 'N'.
         result = 'Number'.
       WHEN OTHERS.
+        result = 'Text'.
     ENDCASE.
 
   ENDMETHOD.
@@ -505,21 +511,31 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     FIELD-SYMBOLS <row> TYPE any.
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
 
-    " create dynamic where condition
-    LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true.
+    " create dynamic where condition - without the client: every row here is
+    " of the logon client, but a new row carries an empty one until it is saved
+    LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
       ASSIGN ms_data_row->* TO <row>.
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
       IF sy-subrc = 0.
+        " a backtick in the value would end the literal early
+        DATA(lv_value) = replace( val  = |{ <value_struc> }|
+                                  sub  = '`'
+                                  with = '``'
+                                  occ  = 0 ).
         IF lv_where IS INITIAL.
-          lv_where = |{ dfies-fieldname } = `{ <value_struc> }`|.
+          lv_where = |{ dfies-fieldname } = `{ lv_value }`|.
         ELSE.
-          DATA(lv_where_and) = |AND { dfies-fieldname } = `{ <value_struc> }`|.
+          DATA(lv_where_and) = |AND { dfies-fieldname } = `{ lv_value }`|.
           CONCATENATE lv_where lv_where_and INTO lv_where SEPARATED BY space.
         ENDIF.
       ENDIF.
     ENDLOOP.
+
+    IF lv_where IS INITIAL.
+      RETURN.
+    ENDIF.
 
     ASSIGN mt_data->* TO <tab>.
 
