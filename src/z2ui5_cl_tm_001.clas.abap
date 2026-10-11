@@ -186,7 +186,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       LOOP AT keys_tmp INTO DATA(key_tmp).
         IF line_exists(  keys[ key = key_tmp-key ] ).
-          DELETE keys_tmp.
+          DELETE keys_tmp USING KEY loop_key.
         ENDIF.
       ENDLOOP.
 

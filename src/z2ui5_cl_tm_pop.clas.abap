@@ -186,7 +186,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                 )->a( n = `editable` b = abap_true
                                 )->ele( n = `content` ns = `form` ).
 
-    " Gehe über alle Comps wenn wir im Edit sind dann sind keyfelder nicht eingabebereit.
+    " all components - in edit mode the key fields are not editable
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies).
 
       DATA(enabled) = COND #( WHEN dfies->keyflag = abap_true AND mv_edit = abap_true THEN abap_false ELSE abap_true ).
@@ -473,7 +473,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     CASE inttype.
       WHEN 'C' OR 'g'.
         result = 'Text'.
-      WHEN 'I' OR 'b' OR 's' OR 'p' OR 'F' OR 'b' OR 'N'.
+      WHEN 'I' OR 'b' OR 's' OR 'p' OR 'F' OR 'N'.
         result = 'Number'.
       WHEN OTHERS.
         result = 'Text'.
