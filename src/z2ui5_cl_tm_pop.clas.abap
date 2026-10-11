@@ -473,7 +473,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     CASE inttype.
       WHEN 'C' OR 'g'.
         result = 'Text'.
-      WHEN 'I' OR 'b' OR 's' OR 'p' OR 'F' OR 'N'.
+      WHEN 'I' OR 'b' OR 's' OR 'P' OR 'F' OR 'N'.
         result = 'Number'.
       WHEN OTHERS.
         result = 'Text'.
