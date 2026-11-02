@@ -73,6 +73,14 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS button_save.
 
+    "! MOVE-CORRESPONDING between two tables, row by row - the table form needs
+    "! 7.40 SP05 and has no 7.02 downport
+    METHODS copy_corresponding
+      IMPORTING
+        it_source TYPE STANDARD TABLE
+      CHANGING
+        ct_target TYPE STANDARD TABLE.
+
     METHODS get_keys
       IMPORTING
         !table        TYPE STANDARD TABLE
@@ -223,8 +231,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           ASSIGN t_table->* TO <tab_org>.
           ASSIGN t_table_del->* TO <del_org>.
 
-          MOVE-CORRESPONDING <del> TO <del_org>.
-          MOVE-CORRESPONDING <tab> TO <tab_org>.
+          copy_corresponding( EXPORTING it_source = <del>
+                              CHANGING  ct_target = <del_org> ).
+          copy_corresponding( EXPORTING it_source = <tab>
+                              CHANGING  ct_target = <tab_org> ).
 
         CATCH cx_root ##NO_HANDLER.
 
@@ -392,8 +402,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           ASSIGN t_table->* TO <tab_org>.
           ASSIGN t_table_del->* TO <del_org>.
 
-          MOVE-CORRESPONDING <del> TO <del_org>.
-          MOVE-CORRESPONDING <tab> TO <tab_org>.
+          copy_corresponding( EXPORTING it_source = <del>
+                              CHANGING  ct_target = <del_org> ).
+          copy_corresponding( EXPORTING it_source = <tab>
+                              CHANGING  ct_target = <tab_org> ).
 
         CATCH cx_root ##NO_HANDLER.
 
@@ -1454,6 +1466,19 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         render_main( ).
 
     ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD copy_corresponding.
+
+    FIELD-SYMBOLS <ls_source> TYPE any.
+    FIELD-SYMBOLS <ls_target> TYPE any.
+
+    CLEAR ct_target.
+    LOOP AT it_source ASSIGNING <ls_source>.
+      APPEND INITIAL LINE TO ct_target ASSIGNING <ls_target>.
+      MOVE-CORRESPONDING <ls_source> TO <ls_target>.
+    ENDLOOP.
 
   ENDMETHOD.
 

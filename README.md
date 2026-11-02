@@ -45,6 +45,8 @@ Good for:
 - ABAP Cloud (S/4 Public Cloud, BTP ABAP Environment, S/4 Private Cloud or
   On-Premise with ABAP for Cloud) or Standard ABAP on R/3 NetWeaver AS ABAP
   7.50 or higher
+- NetWeaver 7.02 - 7.40: the branch `702`, downported automatically from
+  `main` on every push - pull abap2UI5, popups and layout-management from their `702` branches as well
 - [abap2UI5](https://github.com/abap2UI5/abap2UI5)
 - [abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups) - value
   help, search help and the transport request popup
