@@ -174,7 +174,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     IF ms_transport IS INITIAL.
 
       mv_ucomm_tmp = client->get( )-event.
-      client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
+      client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
 
     ELSE.
 
@@ -242,11 +242,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       TRY.
 
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table_del
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
@@ -374,7 +374,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     IF ms_transport IS INITIAL.
 
       mv_ucomm_tmp = client->get( )-event.
-      client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
+      client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
 
     ELSE.
 
@@ -411,11 +411,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       ENDTRY.
       TRY.
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table_del
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
@@ -1038,7 +1038,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     TRY.
         " War es das Layout?
-        DATA(app) = CAST z2ui5_cl_pop_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_popup_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         ms_transport = app->ms_transport.
 
@@ -1074,7 +1074,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       WHEN 'TRANSPORT_CHANGE'.
 
         mv_ucomm_tmp = client->get( )-event.
-        client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
+        client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
 
     ENDCASE.
 

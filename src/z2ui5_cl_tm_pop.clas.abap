@@ -656,7 +656,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
-    client->nav_app_call( z2ui5_cl_pop_value_help=>factory( i_table = mv_tabname
+    client->nav_app_call( z2ui5_cl_popup_value_help=>factory( i_table = mv_tabname
                                                             i_fname = mv_f4_fname
                                                             i_value = CONV #( <value_struc> ) ) ).
 
@@ -675,7 +675,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
-    client->nav_app_call( z2ui5_cl_pop_search_help=>factory( i_table = mv_tabname
+    client->nav_app_call( z2ui5_cl_popup_search_help=>factory( i_table = mv_tabname
                                                              i_fname = mv_shlpfield
                                                              i_value = CONV #( <value_struc> )
                                                              i_data  = ms_data_row )   ).
@@ -760,7 +760,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     TRY.
         " War es die F4 Hilfe?
-        DATA(app) = CAST z2ui5_cl_pop_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_popup_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 
@@ -791,7 +791,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     TRY.
         " War es die Such-Hilfe?
-        DATA(app) = CAST z2ui5_cl_pop_search_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_popup_search_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 
