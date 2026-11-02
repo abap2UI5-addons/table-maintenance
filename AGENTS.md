@@ -15,11 +15,33 @@ and CI gates every change. It is installed with abapGit and depends on the
 | Path | Contents |
 | --- | --- |
 | `src/` | The maintenance app (`z2ui5_cl_tm_001`), its popup (`z2ui5_cl_tm_pop`) and the interface they share (`z2ui5_if_tm_001`) |
+| `src/z2ui5_cl_tm_context`, `src/z2ui5_cx_tm_error` | Utility context and its exception — **vendored copies from abap-util, see below** |
 
 `z2ui5_if_tm_001~mo_parent_view` is the embedding contract: a view cluster hands
 over **the element this app renders into**, normally the `sap.m.Page`. It used
 to be the whole view, which the app then searched for a `Page` by name; the
 generic view builder has no such lookup.
+
+## The utility copy principle
+
+`z2ui5_cl_tm_context` is a **renamed copy** of `zabaputil_cl_util_context`
+from the [abap-util](https://github.com/abap-util/abap-util) master catalog,
+**trimmed to the members this repository uses** (DDIC/RTTI reads, conversion
+exits, messages, URL parameters) plus the private helpers, types and constants
+those need. `z2ui5_cx_tm_error` is `zabaputil_cx_util_error`, renamed and
+copied as-is. abapGit has no dependency management, so utilities are vendored,
+not referenced.
+
+1. **Nothing from the core's frozen `src/99/01`.** `z2ui5_cl_util*` and
+   `z2ui5_cx_util_error` are kept in abap2UI5 for compatibility only; every
+   utility call goes through `z2ui5_cl_tm_context`, every utility exception is
+   `z2ui5_cx_tm_error`.
+2. **New methods are added locally** to `z2ui5_cl_tm_context`; if abap-util
+   already has the method, copy it from there with its private helpers.
+3. **Periodic AI sync-back** merges what was added or fixed here into abap-util.
+4. **Keep the copies close to the master.** `abaplint.jsonc` excludes both files
+   from the style rules the master does not follow (`avoid_use`,
+   `slow_parameter_passing`); do not reformat them.
 
 ## Dependencies
 

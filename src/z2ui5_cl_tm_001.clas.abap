@@ -36,7 +36,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
 
     DATA mv_table          TYPE string.
-    DATA mt_dfies          TYPE z2ui5_cl_util_ext=>ty_t_dfies.
+    DATA mt_dfies          TYPE z2ui5_cl_tm_context=>ty_t_dfies.
     DATA client            TYPE REF TO z2ui5_if_client.
     DATA check_initialized TYPE abap_bool.
     DATA mv_f4_fname       TYPE string.
@@ -135,7 +135,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_txt.
 
-    DATA(texts) = z2ui5_cl_util=>rtti_get_data_element_texts( roll ).
+    DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
     CASE type.
       WHEN 'L'.
@@ -208,7 +208,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_table_name( mv_table ).
+      DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
       TRY.
 
@@ -242,7 +242,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         CATCH cx_root.
 
-          DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg( id = '42'
+          DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
                                                         no = `316` ).
           " MESSAGE e316(42) into DATA(msg).  " Transport request error
           client->message_toast_display( ls_msg-text ).
@@ -268,7 +268,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             MODIFY (mv_table) FROM TABLE @<tab_org>.
             IF sy-subrc = 0.
               COMMIT WORK AND WAIT.
-              ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'i18n'
+              ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
                                                       no = `002` ).
               " MESSAGE s002(i18n) INTO msg.
               client->message_toast_display( ls_msg-text ).
@@ -288,7 +288,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             INSERT (mv_table) FROM TABLE @<tab_org>.
             IF sy-subrc = 0.
               COMMIT WORK AND WAIT.
-              ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'i18n'
+              ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
                                                       no = '002' ).
 
               " MESSAGE s002(i18n) INTO msg.
@@ -377,7 +377,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ASSIGN mt_table->* TO <tab>.
       ASSIGN mt_table_del->* TO <del>.
 
-      DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_table_name( mv_table ).
+      DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
       TRY.
 
@@ -408,14 +408,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                       is_transport = ms_transport ).
 
         CATCH cx_root.
-          DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg( id = '42'
+          DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
                                                         no = `316` ).
 
           " MESSAGE e316(42) INTO DATA(msg).  " Transport request error
           client->message_toast_display( ls_msg-text ).
           RETURN.
       ENDTRY.
-      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'rmps_general'
+      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'rmps_general'
                                               no = `215` ).
       " MESSAGE s215(rmps_general) WITH ms_transport-transport INTO msg. "Transporteintrag erfolgreich geschrieben (&1)
       client->message_toast_display( ls_msg-text ).
@@ -429,7 +429,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     TRY.
 
-        DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_table_name( mv_table ).
+        DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
         IF xsdbool( line_exists( comp[ name = mc_row_id ] ) ) = abap_false.
           APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
@@ -488,7 +488,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_dfies.
 
-    mt_dfies = z2ui5_cl_util_ext=>rtti_get_t_dfies_by_table_name( mv_table ).
+    mt_dfies = z2ui5_cl_tm_context=>rtti_get_t_dfies_by_table_name( mv_table ).
 
     " Check if the DB for the F4 Help is released
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies) WHERE checktable IS NOT INITIAL.
@@ -528,7 +528,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ENDIF.
 
     " TABLE per Parameter?
-    DATA(tab) = z2ui5_cl_util=>url_param_get( val = 'table'
+    DATA(tab) = z2ui5_cl_tm_context=>url_param_get( val = 'table'
                                               url = client->get( )-s_config-search ).
 
     IF tab IS INITIAL.
