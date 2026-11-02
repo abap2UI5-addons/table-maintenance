@@ -15,7 +15,7 @@ CLASS z2ui5_cl_tm_pop DEFINITION
       IMPORTING
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
-        it_dfies      TYPE z2ui5_cl_util_ext=>ty_t_dfies
+        it_dfies      TYPE z2ui5_cl_tm_context=>ty_t_dfies
         is_layout     TYPE REF TO z2ui5_cl_layo_manager
         iv_edit_mode  TYPE abap_bool
         iv_copy_mode  TYPE abap_bool OPTIONAL
@@ -34,7 +34,7 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_f4_fname  TYPE string.
     DATA mv_shlpfield TYPE string.
 
-    DATA mt_dfies     TYPE z2ui5_cl_util_ext=>ty_t_dfies.
+    DATA mt_dfies     TYPE z2ui5_cl_tm_context=>ty_t_dfies.
     DATA mv_tabname   TYPE string. " Importing
 
     METHODS on_init.
@@ -203,7 +203,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
 *      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
 
-      DATA(text) = z2ui5_cl_util=>rtti_get_data_element_texts(
+      DATA(text) = z2ui5_cl_tm_context=>rtti_get_data_element_texts(
                        CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
       simple_form->tag( `Label`
@@ -279,7 +279,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(toolbar) = dialog->ele( `buttons` ).
 
-    DATA(ls_msg) = z2ui5_cl_util=>msg_get_by_msg( id = 'PRC_PRI'
+    DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'PRC_PRI'
                                                   no = `512` ).
     " MESSAGE s512(prc_pri) INTO DATA(msg).
 
@@ -289,7 +289,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     IF mv_edit = abap_true.
 
-      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'ISLM_DI_GEN'
+      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'ISLM_DI_GEN'
                                               no = `160` ).
       "  MESSAGE s160(islm_di_gen) INTO msg.
 
@@ -299,7 +299,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
           )->a( n = `icon` v = 'sap-icon://delete'
           )->a( n = `press` v = client->_event( val = 'POPUP_DELETE' ) ).
 
-      ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'cnv_iuuc_replication'
+      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'cnv_iuuc_replication'
                                               no = `229` ).
       " MESSAGE s229(cnv_iuuc_replication) INTO msg.
 
@@ -311,7 +311,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    ls_msg = z2ui5_cl_util=>msg_get_by_msg( id = 'fsl_utilities'
+    ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'fsl_utilities'
                                             no = `020` ).
     " MESSAGE s020(fsl_utilities) INTO msg.
 
@@ -390,7 +390,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   METHOD get_txt.
 
-    DATA(texts) = z2ui5_cl_util=>rtti_get_data_element_texts( roll ).
+    DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
     CASE type.
       WHEN 'L'.
@@ -410,7 +410,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
   METHOD get_fixval.
 
     DATA comp        TYPE cl_abap_structdescr=>component_table.
-    DATA lt_fixval   TYPE z2ui5_cl_util=>ty_t_fix_val.
+    DATA lt_fixval   TYPE z2ui5_cl_tm_context=>ty_t_fix_val.
     DATA structdescr TYPE REF TO cl_abap_structdescr.
 
     FIELD-SYMBOLS <s_fixval> TYPE any.
@@ -436,7 +436,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      <fixval> = z2ui5_cl_util=>rtti_get_t_ddic_fixed_values( CONV #( dfies->rollname ) ).
+      <fixval> = z2ui5_cl_tm_context=>rtti_get_t_ddic_fixed_values( CONV #( dfies->rollname ) ).
 
     ENDLOOP.
 
@@ -566,9 +566,11 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       " Conversion Exit?
       IF dfies-convexit IS NOT INITIAL.
 
-        z2ui5_cl_util_ext=>conv_exit( EXPORTING name   = dfies
-                                                val    = <value_struc>
-                                      CHANGING  result = <value_tab> ).
+        " the context's conversion exit works in place, on the target field:
+        " the entered value goes there first, as in the branch below
+        <value_tab> = <value_struc>.
+        z2ui5_cl_tm_context=>conv_exit( EXPORTING convexit = dfies-convexit
+                                      CHANGING  value    = <value_tab> ).
       ELSE.
 
         IF dfies-lowercase = abap_false.
@@ -700,7 +702,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( io_table ).
+        DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_any( io_table ).
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 

@@ -48,7 +48,10 @@
     "aff_and_xml": true,
     "allowed_object_naming": true,
     "ambiguous_statement": true,
-    "avoid_use": true,
+    "avoid_use": {
+      // the vendored abap-util copies stay close to the master (AGENTS.md)
+      "exclude": ["z2ui5_cl_tm_context", "z2ui5_cx_tm_error"]
+    },
     "begin_single_include": true,
     "call_transaction_authority_check": true,
     "catch_and_raise": true,
@@ -245,7 +248,10 @@
       "severity": "Warning"
     },
     "sicf_consistency": true,
-    "slow_parameter_passing": true,
+    "slow_parameter_passing": {
+      // the vendored abap-util copies stay close to the master (AGENTS.md)
+      "exclude": ["z2ui5_cl_tm_context", "z2ui5_cx_tm_error"]
+    },
     "sql_escape_host_variables": true,
     "sql_value_conversion": true,
     "static_call_via_instance": {
