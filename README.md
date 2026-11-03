@@ -20,7 +20,7 @@ fixed values and search helps, and records the changes on a transport request.
 For developers and admins who maintain customizing and Z tables, on ABAP
 Cloud as well as on Standard ABAP.
 
-> Part of [abap2UI5-addons](https://github.com/abap2UI5-addons) - addons and apps for [abap2UI5](https://github.com/abap2UI5/abap2UI5), installed with [abapGit](https://abapgit.org).
+> Part of [abap2UI5-addons](https://github.com/abap2UI5-addons) - addons and apps for [abap2UI5](https://github.com/abap2UI5/abap2UI5), installed with [abapGit](https://abapgit.org). Documentation: [abap2ui5-addons.github.io/table-maintenance](https://abap2ui5-addons.github.io/table-maintenance/).
 
 <img width="700" alt="Google Chrome 2024-09-09 12 14 58" src="https://github.com/user-attachments/assets/51a1d7e5-ca7e-4359-9e12-39b00b3c11bf">
 
