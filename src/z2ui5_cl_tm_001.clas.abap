@@ -188,6 +188,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ASSIGN mt_table_del->* TO <del>.
       ASSIGN mt_table_org->* TO <org>.
 
+      " the delete buffer is rebuilt from <org> on every save - a save that
+      " stopped early (duplicate key, transport error) left its rows in it, and
+      " the next save appended them a second time
+      CLEAR <del>.
+
       " Compare all Key entries with the TMP. All entries that are not present are deleted.
       DATA(keys) = get_keys( <tab> ).
       DATA(keys_tmp) = get_keys( <org> ).
@@ -263,56 +268,42 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       TRY.
 
-          IF <del> IS ASSIGNED.
-            IF <del> IS NOT INITIAL.
-
-              DELETE (mv_table) FROM TABLE @<del_org>.
-              IF sy-subrc = 0.
-                COMMIT WORK AND WAIT.
-                CLEAR <del>.
-              ENDIF.
-
-            ENDIF.
+          " deletions and writes are one LUW, committed once both went through:
+          " a deletion committed on its own could not be rolled back when the
+          " write after it failed
+          IF <del> IS NOT INITIAL.
+            " sy-subrc 4 only means a row was no longer in the database
+            DELETE (mv_table) FROM TABLE @<del_org>.
           ENDIF.
 
           IF line_exists( mt_dfies[ keyflag = abap_false ] ).
-
             MODIFY (mv_table) FROM TABLE @<tab_org>.
-            IF sy-subrc = 0.
-              COMMIT WORK AND WAIT.
-              ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
-                                                      no = `002` ).
-              " MESSAGE s002(i18n) INTO msg.
-              client->message_toast_display( ls_msg-text ).
-
-              CLEAR mv_change_active.
-            ELSE.
-              " not every row could be written - undone instead of left in
-              " the LUW for the next commit to write half of it
-              ROLLBACK WORK.
-              client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
-                                           type = `error` ).
-            ENDIF.
-
           ELSE.
-
             DELETE (mv_table) FROM TABLE @<tab_org>.
             INSERT (mv_table) FROM TABLE @<tab_org>.
-            IF sy-subrc = 0.
-              COMMIT WORK AND WAIT.
-              ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
-                                                      no = '002' ).
+          ENDIF.
 
-              " MESSAGE s002(i18n) INTO msg.
-              client->message_toast_display( ls_msg-text ).
+          IF sy-subrc = 0.
+            COMMIT WORK AND WAIT.
 
-              CLEAR mv_change_active.
-            ELSE.
-              ROLLBACK WORK.
-              client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
-                                           type = `error` ).
-            ENDIF.
+            " what was saved is the database state the next save compares
+            " against - with the state of the first read, a row added, saved,
+            " deleted and saved again was never deleted
+            <org> = <tab>.
+            CLEAR <del>.
 
+            ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
+                                                    no = `002` ).
+            " MESSAGE s002(i18n) INTO msg.
+            client->message_toast_display( ls_msg-text ).
+
+            CLEAR mv_change_active.
+          ELSE.
+            " not every row could be written - undone instead of left in
+            " the LUW for the next commit to write half of it
+            ROLLBACK WORK.
+            client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
+                                         type = `error` ).
           ENDIF.
 
         CATCH cx_root INTO DATA(lx_db).
@@ -509,7 +500,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     " Check if the DB for the F4 Help is released
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies) WHERE checktable IS NOT INITIAL.
       TRY.
-          cl_abap_typedescr=>describe_by_name( dfies->checktable ).
+          " type_not_found is a classic exception - the functional call
+          " form dumps on it instead of reaching the CATCH
+          cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = dfies->checktable
+                                               EXCEPTIONS type_not_found = 1
+                                                          OTHERS         = 2 ).
+          IF sy-subrc <> 0.
+            CLEAR dfies->checktable.
+          ENDIF.
         CATCH cx_root.
           CLEAR dfies->checktable.
       ENDTRY.
@@ -959,6 +957,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         IF mv_multi_edit = abap_true.
           CLEAR mv_search_value.
           search( ).
+        ELSE.
+          " multi-edit changes mt_table only; normal mode saves and searches
+          " from mt_table_tmp, which would drop those changes
+          ASSIGN mt_table->* TO FIELD-SYMBOL(<tab_edit>).
+          ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<tab_edit_tmp>).
+          <tab_edit_tmp> = <tab_edit>.
         ENDIF.
 
         get_layout( ).
@@ -1211,7 +1215,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
     ASSIGN mt_table->* TO FIELD-SYMBOL(<mt_table>).
 
-    mv_change_active = xsdbool( <mt_table_tmp> <> <mt_table> ).
+    " stays set once set: copies and deletions in multi-edit reach both
+    " tables, so an equal comparison does not mean nothing is left to save
+    IF mv_change_active = abap_false.
+      mv_change_active = xsdbool( <mt_table_tmp> <> <mt_table> ).
+    ENDIF.
 
     view_model_update( ).
 
@@ -1219,9 +1227,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD button_copy.
 
-    FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <copy>    TYPE any.
+    FIELD-SYMBOLS <copy_id> TYPE any.
 
     ASSIGN mt_table->* TO <tab>.
+    ASSIGN mt_table_tmp->* TO <tab_tmp>.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
@@ -1235,7 +1247,19 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       IF <selkz> = abap_true.
         <selkz> = abap_false.
-        APPEND <line> TO <tab>.
+        APPEND <line> TO <tab> ASSIGNING <copy>.
+
+        " only the copy gets a new id, and it goes to the working copy too:
+        " re-keying every row left mt_table_tmp with ids nothing matched
+        UNASSIGN <copy_id>.
+        ASSIGN COMPONENT mc_row_id OF STRUCTURE <copy> TO <copy_id>.
+        IF <copy_id> IS ASSIGNED.
+          TRY.
+              <copy_id> = cl_system_uuid=>create_uuid_c32_static( ).
+            CATCH cx_root ##NO_HANDLER.
+          ENDTRY.
+        ENDIF.
+        APPEND <copy> TO <tab_tmp>.
 
         mv_change_active = abap_true.
 
@@ -1244,8 +1268,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDIF.
 
     ENDLOOP.
-
-    set_row_id( ).
 
   ENDMETHOD.
 
