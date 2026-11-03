@@ -10,7 +10,7 @@ INTERFACE z2ui5_if_tm_001
   " `Page`; the generic view builder cannot look an element up by name, so an
   " embedder now passes the node directly.
   DATA mo_parent_view       TYPE REF TO z2ui5_cl_ui5_view_builder.
-  " The App is in an unsaves State - Message pops up when leaving
+  " The App is in an unsaved state - Message pops up when leaving
   DATA mv_change_active     TYPE abap_bool.
 
   DATA ms_transport         type z2ui5_cl_tm_context=>ty_s_transport .

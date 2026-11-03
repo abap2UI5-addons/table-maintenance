@@ -185,7 +185,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                           )->a( n = `afterClose` v = client->_event( 'POPUP_CLOSE' ) ).
 
     DATA(simple_form) = dialog->ele( n = `SimpleForm` ns = `form`
-                                )->a( n = `title` v = ''
                                 )->a( n = `layout` v = 'ResponsiveGridLayout'
                                 )->a( n = `editable` b = abap_true
                                 )->ele( n = `content` ns = `form` ).
@@ -206,8 +205,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       IF <val> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
-
-*      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
 
       DATA(text) = z2ui5_cl_tm_context=>rtti_get_data_element_texts(
                        CONV string( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
@@ -513,22 +510,27 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ENDLOOP.
 
-*    set_row_id( ).
-
   ENDMETHOD.
 
   METHOD check_key_already_present.
 
     DATA lv_where TYPE string.
+    DATA lr_row   TYPE REF TO data.
 
     FIELD-SYMBOLS <row> TYPE any.
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+
+    " the stored rows hold the values as data_to_table writes them (conversion
+    " exit, upper case) - the entered row is compared in that form, on a copy
+    ASSIGN mt_data->* TO <tab>.
+    CREATE DATA lr_row LIKE LINE OF <tab>.
+    ASSIGN lr_row->* TO <row>.
+    data_to_table( CHANGING row = <row> ).
 
     " create dynamic where condition - without the client: every row here is
     " of the logon client, but a new row carries an empty one until it is saved
     LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
-      ASSIGN ms_data_row->* TO <row>.
       FIELD-SYMBOLS <value_struc> TYPE any.
       UNASSIGN <value_struc>.
       ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO <value_struc>.
@@ -552,11 +554,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    ASSIGN mt_data->* TO <tab>.
-
     LOOP AT <tab> TRANSPORTING NO FIELDS WHERE (lv_where).
 
-      client->message_toast_display( 'Duplicate Key Error' ).
+      client->message_toast_display( 'An entry with this key already exists.' ).
       result = abap_true.
       EXIT.
     ENDLOOP.
@@ -632,7 +632,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ASSIGN mt_data->* TO <tab>.
 
-*    ASSIGN <tab>[  CONV #( get_active_row( ) ) ] TO FIELD-SYMBOL(<row>).
     DATA(active_row) = get_active_row( ).
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
@@ -646,19 +645,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ENDLOOP.
 
-*    set_row_id( ).
-
   ENDMETHOD.
 
   METHOD get_active_row.
-
-*    FIELD-SYMBOLS <row>      TYPE any.
-*
-*    ASSIGN ms_table_row->* TO <row>.
-*    ASSIGN COMPONENT mc_row_id OF STRUCTURE <row> TO FIELD-SYMBOL(<id>).
-*    IF <id> IS ASSIGNED.
-*      result = <id>.
-*    ENDIF.
 
     result = mv_row_id.
 
@@ -761,7 +750,13 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
         IF <value> IS ASSIGNED.
 
-          <value> = lines( <mt_data> ).
+          " a UUID, as copy_table_line does: lines( ) repeats an id once a row
+          " was deleted, and z2ui5_cl_tm_001->on_after_popup then took the new
+          " row for one it already had and Save dropped it
+          TRY.
+              <value> = cl_system_uuid=>create_uuid_c32_static( ).
+            CATCH cx_root ##NO_HANDLER.
+          ENDTRY.
           result->mv_row_id = <value>.
         ENDIF.
 

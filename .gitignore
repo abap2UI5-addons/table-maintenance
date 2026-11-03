@@ -8,3 +8,7 @@ output
 .github/abaplint/rename-deps/
 .github/abaplint/rename_run.json
 .github/out/
+site/node_modules/
+site/.vitepress/cache/
+site/.vitepress/dist/
+build/
