@@ -43,7 +43,7 @@ Good for:
 **Requirements**
 
 - ABAP Cloud (S/4 Public Cloud, BTP ABAP Environment, S/4 Private Cloud or
-  On-Premise with ABAP for Cloud) or Standard ABAP on R/3 NetWeaver AS ABAP
+  On-Premise with ABAP for Cloud) or Standard ABAP on SAP NetWeaver AS ABAP
   7.50 or higher
 - NetWeaver 7.02 - 7.40: the branch `702`, downported automatically from
   `main` on every push - pull abap2UI5, popups and layout-management from their `702` branches as well

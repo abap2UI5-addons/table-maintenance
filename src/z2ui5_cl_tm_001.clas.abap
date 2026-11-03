@@ -1102,14 +1102,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->a( n = `selectionBehavior` v = 'RowSelector'
                       )->a( n = `rows` v = client->_bind_edit( <tab> ) ).
 
-    " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(toolbar) = table->ele( n = `extension` ns = `table`
                         )->ele( `OverflowToolbar`
                         )->tag( `ToolbarSpacer` ).
 
-    toolbar = z2ui5_cl_layo_pop=>render_layout_function( xml    = toolbar
-                                                         client = client
-                                                         layout = mo_layout ).
+    z2ui5_cl_layo_pop=>render_layout_function( xml    = toolbar
+                                               client = client
+                                               layout = mo_layout ).
 
     DATA(columns) = table->ele( n = `columns` ns = `table` ).
 
