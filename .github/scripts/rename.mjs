@@ -214,6 +214,13 @@ const config = {
     xml_consistency: true,
   },
 };
+// what the addon's own lint leaves out (abaplint.jsonc global.exclude, e.g. a
+// package for another target) is renamed like everything else, but not
+// checked here either: every rule skips it
+const excluded = (own.global?.exclude ?? []).map((e) => join(ROOT, e).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+if (excluded.length > 0) {
+  for (const rule of Object.keys(config.rules)) config.rules[rule] = { exclude: excluded };
+}
 writeFileSync(RUN_CONFIG, JSON.stringify(config, null, 2) + "\n");
 
 const bin = join(ROOT, "node_modules/.bin/abaplint");
