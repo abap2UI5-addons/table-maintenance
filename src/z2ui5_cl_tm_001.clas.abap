@@ -199,7 +199,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDLOOP.
 
       LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line>).
-        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
+        FIELD-SYMBOLS <id> TYPE any.
+        UNASSIGN <id>.
+        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
         IF line_exists(  keys_tmp[ row_id = <id> ] ).
           APPEND <line> TO <del>.
         ENDIF.
@@ -334,7 +336,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT table ASSIGNING <line>.
 
-      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
+      FIELD-SYMBOLS <id> TYPE any.
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
       DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
       DATA(value) = ``.
@@ -865,7 +869,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      FIELD-SYMBOLS <row> TYPE any.
+      UNASSIGN <row>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
 
         TRY.
@@ -1153,7 +1159,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO FIELD-SYMBOL(<selkz>).
+      FIELD-SYMBOLS <selkz> TYPE any.
+      UNASSIGN <selkz>.
+      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO <selkz>.
 
       IF <selkz> IS NOT ASSIGNED.
         CONTINUE.
@@ -1162,7 +1170,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
+      FIELD-SYMBOLS <id> TYPE any.
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
       IF <id> IS NOT ASSIGNED.
         CONTINUE.
@@ -1171,7 +1181,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       " We need to delete this in the tmp table aslwell ..
       LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
 
-        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO FIELD-SYMBOL(<id_tmp>).
+        FIELD-SYMBOLS <id_tmp> TYPE any.
+        UNASSIGN <id_tmp>.
+        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <id_tmp>.
 
         IF <id_tmp> IS NOT ASSIGNED.
           CONTINUE.
@@ -1214,7 +1226,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO FIELD-SYMBOL(<selkz>).
+      FIELD-SYMBOLS <selkz> TYPE any.
+      UNASSIGN <selkz>.
+      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO <selkz>.
 
       IF <selkz> IS NOT ASSIGNED.
         CONTINUE.
@@ -1272,7 +1286,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " Check for deleted lines
           LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+            FIELD-SYMBOLS <row> TYPE any.
+            UNASSIGN <row>.
+            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
@@ -1281,7 +1297,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
             LOOP AT <tab_changed> ASSIGNING FIELD-SYMBOL(<line_changed>).
 
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO FIELD-SYMBOL(<row_changed>).
+              FIELD-SYMBOLS <row_changed> TYPE any.
+              UNASSIGN <row_changed>.
+              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
               IF <row_changed> IS NOT ASSIGNED.
                 CONTINUE.
               ENDIF.
@@ -1298,7 +1316,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
               LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
 
-                ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO FIELD-SYMBOL(<row_tmp>).
+                FIELD-SYMBOLS <row_tmp> TYPE any.
+                UNASSIGN <row_tmp>.
+                ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
                 IF <row_tmp> IS NOT ASSIGNED.
                   CONTINUE.
                 ENDIF.
@@ -1317,6 +1337,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " Check for added lines
           LOOP AT <tab_changed> ASSIGNING <line_changed>.
 
+            UNASSIGN <row_changed>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
             IF <row_changed> IS NOT ASSIGNED.
               CONTINUE.
@@ -1326,6 +1347,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
             LOOP AT <tab> ASSIGNING <line>.
 
+              UNASSIGN <row>.
               ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
               IF <row> IS NOT ASSIGNED.
                 CONTINUE.
@@ -1350,6 +1372,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " Transfer changes for TAB to TMP_TAB.
           LOOP AT <tab> ASSIGNING <line>.
 
+            UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
@@ -1357,6 +1380,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
             LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
 
+              UNASSIGN <row_tmp>.
               ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
               IF <row_tmp> IS NOT ASSIGNED.
                 CONTINUE.

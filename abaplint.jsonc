@@ -378,6 +378,14 @@
         "mv_transport"
       ]
     },
-    "use_bool_expression": true
+    "use_bool_expression": true,
+    // added 2026-11 with its findings fixed: UNASSIGN before an ASSIGN in a loop
+    // (an inline FIELD-SYMBOL( ) of an ASSIGN COMPONENT became FIELD-SYMBOLS ... TYPE any).
+    // z2ui5_cl_tm_context is the vendored abap-util copy: its two findings belong upstream
+    "is_assigned_in_loop": {
+      "exclude": [
+        "z2ui5_cl_tm_context\\."
+      ]
+    }
   }
 }
