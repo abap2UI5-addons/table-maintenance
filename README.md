@@ -1,7 +1,7 @@
 # table-maintenance
 
 [![abap2UI5-addons](https://img.shields.io/badge/abap2UI5--addons-app-1873b4)](https://github.com/abap2UI5-addons)
-[![ABAP](https://img.shields.io/badge/ABAP-Cloud%20%7C%20Standard%20%E2%89%A5%207.50-blue)](#installation)
+[![ABAP](https://img.shields.io/badge/ABAP-Cloud%20%7C%20Standard%20%E2%89%A5%207.50%20%7C%207.02-blue)](#installation)
 [![abap2UI5](https://img.shields.io/badge/requires-abap2UI5-blue)](https://github.com/abap2UI5/abap2UI5)
 [![popups](https://img.shields.io/badge/requires-popups-blue)](https://github.com/abap2UI5-addons/popups)
 [![layout-management](https://img.shields.io/badge/requires-layout--management-blue)](https://github.com/abap2UI5-addons/layout-management)
@@ -9,6 +9,7 @@
 <br>
 [![ABAP Cloud](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/table-maintenance/abap-cloud.yaml?branch=main&label=ABAP%20Cloud)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-cloud.yaml)
 [![ABAP Standard](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/table-maintenance/abap-standard.yaml?branch=main&label=ABAP%20Standard)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-standard.yaml)
+[![ABAP 7.02](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/table-maintenance/abap-702.yaml?branch=main&label=ABAP%207.02)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/abap-702.yaml)
 [![rename](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/table-maintenance/check-rename.yaml?branch=main&label=rename)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-rename.yaml)
 [![check-abap2UI5](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fabap2UI5-addons%2Ftable-maintenance%2Fbadges%2Fcheck-abap2ui5.json)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-abap2ui5.yaml)
 [![abap2UI5](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fabap2UI5-addons%2Ftable-maintenance%2Fbadges%2Fabap2ui5.json)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/check-abap2ui5.yaml)
@@ -22,7 +23,7 @@ Cloud as well as on Standard ABAP.
 
 > Part of [abap2UI5-addons](https://github.com/abap2UI5-addons) - addons and apps for [abap2UI5](https://github.com/abap2UI5/abap2UI5), installed with [abapGit](https://abapgit.org). Documentation: [abap2ui5-addons.github.io/table-maintenance](https://abap2ui5-addons.github.io/table-maintenance/).
 
-<img width="700" alt="Google Chrome 2024-09-09 12 14 58" src="https://github.com/user-attachments/assets/51a1d7e5-ca7e-4359-9e12-39b00b3c11bf">
+<img width="700" alt="Table maintenance with the entries of a database table" src="https://github.com/user-attachments/assets/51a1d7e5-ca7e-4359-9e12-39b00b3c11bf">
 
 ## Why
 
@@ -37,6 +38,9 @@ Good for:
 - **ABAP Cloud systems** without SM30.
 - **Embedding** - a view cluster can render the app into its own page through
   the interface `z2ui5_if_tm_001`.
+
+To only look into a table, without changing it, use
+[abap2UI5-addons/se16n](https://github.com/abap2UI5-addons/se16n).
 
 ## Installation
 
@@ -58,7 +62,7 @@ Good for:
 1. [abap2UI5](https://github.com/abap2UI5/abap2UI5)
 2. [abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups)
 3. [abap2UI5-addons/layout-management](https://github.com/abap2UI5-addons/layout-management)
-4. this repository (branch `main`)
+4. this repository - branch `main`, or `702` on NetWeaver 7.02 - 7.40
 
 **Start** - the app is `z2ui5_cl_tm_001`; pass the table to maintain as the
 URL parameter `table`:
@@ -95,11 +99,14 @@ of the installation with the same name.
    entries on a transport request or changes the request.
 
 ### Edit entries
-<img width="700" alt="Google Chrome 2024-09-09 12 14 58" src="https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c">
+<img width="700" alt="Popup to edit an entry with value help" src="https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c">
 
 ## Features
 
-* Edit Data, Adjust Customizing entries with Value-Help, Fixed Values and Search-Helps, Add Entries, Delete Entries, Transport Changes
+* Add, edit, copy and delete entries of any database table
+* Value help from check tables, fixed values and search helps
+* Column layouts saved as variants (layout-management)
+* Changes recorded on a transport request
 
 ## Security
 
@@ -110,12 +117,17 @@ run the app.
 
 ## Development
 
-```sh
+```bash
 npm ci
-npm run check   # abaplint Standard + ABAP Cloud, abap2UI5-linter, rename check
+npm run check           # all gates below, as in CI
+npm run lint            # abaplint, Standard ABAP (v750)
+npm run check:cloud     # abaplint, ABAP Cloud
+npm run check:abap2ui5  # abap2UI5-linter over apps and views
+npm run rename          # namespace rename check
+npm run downport        # downport the source to 7.02 syntax
+npm run site            # the GitHub Pages site (VitePress) into build/site
+npm run site:dev        # the same with the VitePress dev server
 ```
-
-`npm run check` runs the same steps as CI.
 
 ## Contributing
 

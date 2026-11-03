@@ -41,8 +41,6 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA check_initialized TYPE abap_bool.
     DATA mv_f4_fname       TYPE string.
     DATA mv_shlpfield      TYPE string.
-*    DATA ms_transport      TYPE z2ui5_cl_popup_show_tr=>ty_s_data.
-    DATA mv_transport      TYPE string.
     DATA mv_multi_edit     TYPE abap_bool.
     DATA mv_key_error      TYPE abap_bool.
 
@@ -212,12 +210,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
       ENDLOOP.
 
-      " Duplicate Key error?!
+      " two rows with the same key cannot be saved
       SORT keys BY key ASCENDING.
       keys_tmp = keys.
       DELETE ADJACENT DUPLICATES FROM keys COMPARING key.
       IF lines( keys ) <> lines( keys_tmp ).
-        client->message_box_display( text = `Duplicate entries error.`
+        client->message_box_display( text = `Two or more entries have the same key.`
                                      type = `error` ).
 
         RETURN.
@@ -627,12 +625,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                         tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
-*                       halign          = client->_bind( val       = layout->halign
-*                       tab             = mo_layout->ms_layout-t_layout
-*                       tab_index       = lv_index )
-*                       importance      = client->_bind( val       = layout->importance
-*                       tab             = mo_layout->ms_layout-t_layout
-*                       tab_index       = lv_index )
           )->a( n = `mergeDuplicates` v = client->_bind( val       = layout->merge
                                                         tab       = mo_layout->ms_layout-t_layout
                                                         tab_index = lv_index )
@@ -649,7 +641,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->ele( `ColumnListItem`
                       )->a( n = `vAlign` v = 'Middle'
                       )->a( n = `type` v = 'Navigation'
-*                                           type   = 'Active'
                       )->a( n = `press` v = client->_event( val   = 'ROW_SELECT'
                                                                     arg   = `${ROW_ID}` )
                       )->ele( `cells` ).
@@ -1101,7 +1092,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->ele( n = `Table` ns = `table`
                       )->a( n = `alternateRowColors` v = 'true'
                       )->a( n = `visibleRowCountMode` v = 'Auto'
-*                                                               fixedrowcount       = '1'
                       )->a( n = `selectionMode` v = 'None'
                       )->a( n = `selectionBehavior` v = 'RowSelector'
                       )->a( n = `rows` v = client->_bind_edit( <tab> ) ).
@@ -1123,9 +1113,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                       tab       = mo_layout->ms_layout-t_layout
                                                       tab_index = lv_index )
-*                      halign         = client->_bind( val       = layout->halign
-*                      tab            = mo_layout->ms_layout-t_layout
-*                      tab_index      = lv_index )
                       )->a( n = `width` v = COND #( WHEN layout->width IS NOT INITIAL
                                                THEN client->_bind( val       = layout->width
                                                                    tab       = mo_layout->ms_layout-t_layout
