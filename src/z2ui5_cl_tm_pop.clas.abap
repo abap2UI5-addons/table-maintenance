@@ -131,12 +131,12 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     DATA(found) = abap_false.
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-      IF <row_id> IS ASSIGNED.
-        IF <row_id> = mv_row_id.
-          found = abap_true.
-          EXIT.
-        ENDIF.
+      FIELD-SYMBOLS <row_id> TYPE any.
+      UNASSIGN <row_id>.
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO <row_id>.
+      IF <row_id> IS ASSIGNED AND <row_id> = mv_row_id.
+        found = abap_true.
+        EXIT.
       ENDIF.
 
     ENDLOOP.
@@ -150,9 +150,13 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     LOOP AT mt_dfies INTO DATA(dfies).
 
-      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO FIELD-SYMBOL(<value_tab>).
+      FIELD-SYMBOLS <value_tab> TYPE any.
+      UNASSIGN <value_tab>.
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO <value_tab>.
       ASSIGN ms_data_row->* TO <table_row>.
-      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <table_row> TO FIELD-SYMBOL(<value_struc>).
+      FIELD-SYMBOLS <value_struc> TYPE any.
+      UNASSIGN <value_struc>.
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <table_row> TO <value_struc>.
 
       IF <value_tab> IS ASSIGNED AND <value_struc> IS ASSIGNED.
         <value_struc> = <value_tab>.
@@ -189,14 +193,16 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     " all components - in edit mode the key fields are not editable
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies).
 
-      DATA(enabled) = COND #( WHEN dfies->keyflag = abap_true AND mv_edit = abap_true THEN abap_false ELSE abap_true ).
+      DATA(enabled) = xsdbool( NOT ( dfies->keyflag = abap_true AND mv_edit = abap_true ) ).
 
       IF dfies->fieldname = 'MANDT'.
         enabled = abap_false.
       ENDIF.
 
       ASSIGN ms_data_row->* TO <row>.
-      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<val>).
+      FIELD-SYMBOLS <val> TYPE any.
+      UNASSIGN <val>.
+      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <row> TO <val>.
       IF <val> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
@@ -204,14 +210,16 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 *      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
 
       DATA(text) = z2ui5_cl_tm_context=>rtti_get_data_element_texts(
-                       CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
+                       CONV string( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
       simple_form->tag( `Label`
           )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN `Bold` ELSE `Standard` )
           )->a( n = `text` t = text ).
 
       ASSIGN ms_fixval->* TO <s_fixval>.
-      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <s_fixval> TO FIELD-SYMBOL(<struc>).
+      FIELD-SYMBOLS <struc> TYPE any.
+      UNASSIGN <struc>.
+      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <s_fixval> TO <struc>.
       IF <struc> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
@@ -252,26 +260,27 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       ELSE.
 
-        IF dfies->inttype = 'D'.
+        CASE dfies->inttype.
+          WHEN 'D'.
 
-          simple_form->tag( `DatePicker`
-              )->a( n = `value` v = client->_bind_edit( <val> ) ).
+            simple_form->tag( `DatePicker`
+                )->a( n = `value` v = client->_bind_edit( <val> ) ).
 
-        ELSEIF dfies->inttype = 'T'.
+          WHEN 'T'.
 
-          simple_form->tag( `TimePicker`
-              )->a( n = `value` v = client->_bind_edit( <val> ) ).
+            simple_form->tag( `TimePicker`
+                )->a( n = `value` v = client->_bind_edit( <val> ) ).
 
-        ELSE.
+          WHEN OTHERS.
 
-          simple_form->tag( `Input`
-              )->a( n = `value` v = client->_bind_edit( <val> )
-              )->a( n = `showValueHelp` b = abap_false
-              )->a( n = `enabled` b = enabled
-              )->a( n = `type` v = type
-              )->a( n = `maxLength` v = dfies->leng ).
+            simple_form->tag( `Input`
+                )->a( n = `value` v = client->_bind_edit( <val> )
+                )->a( n = `showValueHelp` b = abap_false
+                )->a( n = `enabled` b = enabled
+                )->a( n = `type` v = type
+                )->a( n = `maxLength` v = dfies->leng ).
 
-        ENDIF.
+        ENDCASE.
 
       ENDIF.
 
@@ -430,7 +439,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     LOOP AT mt_dfies REFERENCE INTO dfies.
 
       ASSIGN ms_fixval->* TO <s_fixval>.
-      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <s_fixval> TO FIELD-SYMBOL(<fixval>).
+      FIELD-SYMBOLS <fixval> TYPE any.
+      UNASSIGN <fixval>.
+      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <s_fixval> TO <fixval>.
 
       IF <fixval> IS NOT ASSIGNED.
         CONTINUE.
@@ -466,7 +477,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     " e   Decimal Floating Point Number, 34 Digits
     " j   Static Boxed Components
     " k   Generic Boxed Components
-    " z   Node Line for Stuctured Objects
+    " z   Node Line for Structured Objects
     " 8   Whole Number (8-Byte Integer with Sign)
     " p   Time stamp 'yyyy-mm-dd hh:mm:ss[.nnnnnnn]'
 
@@ -489,7 +500,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      FIELD-SYMBOLS <row> TYPE any.
+      UNASSIGN <row>.
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO <row>.
       IF <row> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
@@ -516,7 +529,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
       ASSIGN ms_data_row->* TO <row>.
-      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+      FIELD-SYMBOLS <value_struc> TYPE any.
+      UNASSIGN <value_struc>.
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO <value_struc>.
 
       IF sy-subrc = 0.
         " a backtick in the value would end the literal early
@@ -554,10 +569,14 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     LOOP AT mt_dfies INTO DATA(dfies).
 
-      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE row TO FIELD-SYMBOL(<value_tab>).
+      FIELD-SYMBOLS <value_tab> TYPE any.
+      UNASSIGN <value_tab>.
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE row TO <value_tab>.
 
       ASSIGN ms_data_row->* TO <row>.
-      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+      FIELD-SYMBOLS <value_struc> TYPE any.
+      UNASSIGN <value_struc>.
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO <value_struc>.
 
       IF NOT ( <value_tab> IS ASSIGNED AND <value_struc> IS ASSIGNED ).
         CONTINUE.
@@ -597,7 +616,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      FIELD-SYMBOLS <row> TYPE any.
+      UNASSIGN <row>.
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
         <row> = sy-tabix.
       ENDIF.
@@ -616,11 +637,11 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-      IF <row_id> IS ASSIGNED.
-        IF <row_id> = active_row.
-          data_to_table( CHANGING row = <line> ).
-        ENDIF.
+      FIELD-SYMBOLS <row_id> TYPE any.
+      UNASSIGN <row_id>.
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO <row_id>.
+      IF <row_id> IS ASSIGNED AND <row_id> = active_row.
+        data_to_table( CHANGING row = <line> ).
       ENDIF.
 
     ENDLOOP.
@@ -656,7 +677,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
-    client->nav_app_call( z2ui5_cl_pop_value_help=>factory( i_table = mv_tabname
+    client->nav_app_call( z2ui5_cl_popup_value_help=>factory( i_table = mv_tabname
                                                             i_fname = mv_f4_fname
                                                             i_value = CONV #( <value_struc> ) ) ).
 
@@ -675,7 +696,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
 
-    client->nav_app_call( z2ui5_cl_pop_search_help=>factory( i_table = mv_tabname
+    client->nav_app_call( z2ui5_cl_popup_shlp=>factory( i_table = mv_tabname
                                                              i_fname = mv_shlpfield
                                                              i_value = CONV #( <value_struc> )
                                                              i_data  = ms_data_row )   ).
@@ -760,7 +781,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     TRY.
         " War es die F4 Hilfe?
-        DATA(app) = CAST z2ui5_cl_pop_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_popup_value_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 
@@ -791,7 +812,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     TRY.
         " War es die Such-Hilfe?
-        DATA(app) = CAST z2ui5_cl_pop_search_help( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_popup_shlp( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         IF app->mv_return_value IS NOT INITIAL.
 

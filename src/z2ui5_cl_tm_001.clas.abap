@@ -73,6 +73,14 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS button_save.
 
+    "! MOVE-CORRESPONDING between two tables, row by row - the table form needs
+    "! 7.40 SP05 and has no 7.02 downport
+    METHODS copy_corresponding
+      IMPORTING
+        it_source TYPE STANDARD TABLE
+      CHANGING
+        ct_target TYPE STANDARD TABLE.
+
     METHODS get_keys
       IMPORTING
         !table        TYPE STANDARD TABLE
@@ -166,7 +174,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     IF ms_transport IS INITIAL.
 
       mv_ucomm_tmp = client->get( )-event.
-      client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
+      client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
 
     ELSE.
 
@@ -191,7 +199,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDLOOP.
 
       LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line>).
-        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
+        FIELD-SYMBOLS <id> TYPE any.
+        UNASSIGN <id>.
+        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
         IF line_exists(  keys_tmp[ row_id = <id> ] ).
           APPEND <line> TO <del>.
         ENDIF.
@@ -223,8 +233,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           ASSIGN t_table->* TO <tab_org>.
           ASSIGN t_table_del->* TO <del_org>.
 
-          MOVE-CORRESPONDING <del> TO <del_org>.
-          MOVE-CORRESPONDING <tab> TO <tab_org>.
+          copy_corresponding( EXPORTING it_source = <del>
+                              CHANGING  ct_target = <del_org> ).
+          copy_corresponding( EXPORTING it_source = <tab>
+                              CHANGING  ct_target = <tab_org> ).
 
         CATCH cx_root ##NO_HANDLER.
 
@@ -232,11 +244,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       TRY.
 
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table_del
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
@@ -324,7 +336,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT table ASSIGNING <line>.
 
-      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
+      FIELD-SYMBOLS <id> TYPE any.
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
       DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
       DATA(value) = ``.
@@ -364,7 +378,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     IF ms_transport IS INITIAL.
 
       mv_ucomm_tmp = client->get( )-event.
-      client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
+      client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
 
     ELSE.
 
@@ -392,18 +406,20 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           ASSIGN t_table->* TO <tab_org>.
           ASSIGN t_table_del->* TO <del_org>.
 
-          MOVE-CORRESPONDING <del> TO <del_org>.
-          MOVE-CORRESPONDING <tab> TO <tab_org>.
+          copy_corresponding( EXPORTING it_source = <del>
+                              CHANGING  ct_target = <del_org> ).
+          copy_corresponding( EXPORTING it_source = <tab>
+                              CHANGING  ct_target = <tab_org> ).
 
         CATCH cx_root ##NO_HANDLER.
 
       ENDTRY.
       TRY.
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
-          z2ui5_cl_pop_show_tr=>add_data_to_tranport( ir_data      = t_table_del
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
@@ -677,14 +693,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
               )->a( n = `text` v = sub_col ).
         ENDIF.
 
+      ELSEIF layout->reference_field IS NOT INITIAL.
+        cells->ele( `ObjectIdentifier`
+            )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
       ELSE.
-        IF layout->reference_field IS NOT INITIAL.
-          cells->ele( `ObjectIdentifier`
-              )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
-        ELSE.
-          cells->ele( `ObjectIdentifier`
-              )->a( n = `text` v = |\{{ layout->fname }\}| ).
-        ENDIF.
+        cells->ele( `ObjectIdentifier`
+            )->a( n = `text` v = |\{{ layout->fname }\}| ).
       ENDIF.
     ENDLOOP.
 
@@ -855,7 +869,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      FIELD-SYMBOLS <row> TYPE any.
+      UNASSIGN <row>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
 
         TRY.
@@ -936,9 +952,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_EDIT'.
 
-        mv_multi_edit = COND #( WHEN mv_multi_edit = abap_false THEN abap_true ELSE abap_false ).
+        mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
         DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
-        selkz->* = COND #( WHEN mv_multi_edit = abap_true THEN abap_true ELSE abap_false ).
+        selkz->* = xsdbool( mv_multi_edit = abap_true ).
 
         IF mv_multi_edit = abap_true.
           CLEAR mv_search_value.
@@ -1026,7 +1042,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     TRY.
         " War es das Layout?
-        DATA(app) = CAST z2ui5_cl_pop_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_popup_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         ms_transport = app->ms_transport.
 
@@ -1062,7 +1078,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       WHEN 'TRANSPORT_CHANGE'.
 
         mv_ucomm_tmp = client->get( )-event.
-        client->nav_app_call( z2ui5_cl_pop_show_tr=>factory( ) ).
+        client->nav_app_call( z2ui5_cl_popup_show_tr=>factory( ) ).
 
     ENDCASE.
 
@@ -1143,7 +1159,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO FIELD-SYMBOL(<selkz>).
+      FIELD-SYMBOLS <selkz> TYPE any.
+      UNASSIGN <selkz>.
+      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO <selkz>.
 
       IF <selkz> IS NOT ASSIGNED.
         CONTINUE.
@@ -1152,7 +1170,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<id>).
+      FIELD-SYMBOLS <id> TYPE any.
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
       IF <id> IS NOT ASSIGNED.
         CONTINUE.
@@ -1161,7 +1181,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       " We need to delete this in the tmp table aslwell ..
       LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
 
-        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO FIELD-SYMBOL(<id_tmp>).
+        FIELD-SYMBOLS <id_tmp> TYPE any.
+        UNASSIGN <id_tmp>.
+        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <id_tmp>.
 
         IF <id_tmp> IS NOT ASSIGNED.
           CONTINUE.
@@ -1190,11 +1212,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
     ASSIGN mt_table->* TO FIELD-SYMBOL(<mt_table>).
 
-    IF <mt_table_tmp> <> <mt_table>.
-      mv_change_active = abap_true.
-    ELSE.
-      mv_change_active = abap_false.
-    ENDIF.
+    mv_change_active = xsdbool( <mt_table_tmp> <> <mt_table> ).
 
     view_model_update( ).
 
@@ -1208,7 +1226,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO FIELD-SYMBOL(<selkz>).
+      FIELD-SYMBOLS <selkz> TYPE any.
+      UNASSIGN <selkz>.
+      ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO <selkz>.
 
       IF <selkz> IS NOT ASSIGNED.
         CONTINUE.
@@ -1266,7 +1286,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " Check for deleted lines
           LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+            FIELD-SYMBOLS <row> TYPE any.
+            UNASSIGN <row>.
+            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
@@ -1275,7 +1297,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
             LOOP AT <tab_changed> ASSIGNING FIELD-SYMBOL(<line_changed>).
 
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO FIELD-SYMBOL(<row_changed>).
+              FIELD-SYMBOLS <row_changed> TYPE any.
+              UNASSIGN <row_changed>.
+              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
               IF <row_changed> IS NOT ASSIGNED.
                 CONTINUE.
               ENDIF.
@@ -1292,7 +1316,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
               LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
 
-                ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO FIELD-SYMBOL(<row_tmp>).
+                FIELD-SYMBOLS <row_tmp> TYPE any.
+                UNASSIGN <row_tmp>.
+                ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
                 IF <row_tmp> IS NOT ASSIGNED.
                   CONTINUE.
                 ENDIF.
@@ -1311,6 +1337,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " Check for added lines
           LOOP AT <tab_changed> ASSIGNING <line_changed>.
 
+            UNASSIGN <row_changed>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
             IF <row_changed> IS NOT ASSIGNED.
               CONTINUE.
@@ -1320,6 +1347,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
             LOOP AT <tab> ASSIGNING <line>.
 
+              UNASSIGN <row>.
               ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
               IF <row> IS NOT ASSIGNED.
                 CONTINUE.
@@ -1344,6 +1372,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " Transfer changes for TAB to TMP_TAB.
           LOOP AT <tab> ASSIGNING <line>.
 
+            UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
@@ -1351,6 +1380,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
             LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
 
+              UNASSIGN <row_tmp>.
               ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
               IF <row_tmp> IS NOT ASSIGNED.
                 CONTINUE.
@@ -1427,33 +1457,44 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD on_event_table_input.
 
-    CASE client->get( )-event.
+    IF client->get( )-event = `TABLE_OPEN`.
 
-      WHEN `TABLE_OPEN`.
+      DATA(table) = to_upper( condense( mv_table_input ) ).
+      IF table IS INITIAL.
+        client->message_toast_display( `Enter a table name.` ).
+        RETURN.
+      ENDIF.
 
-        DATA(table) = to_upper( condense( mv_table_input ) ).
-        IF table IS INITIAL.
-          client->message_toast_display( `Enter a table name.` ).
-          RETURN.
-        ENDIF.
+      cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
+                                           RECEIVING  p_descr_ref    = DATA(descr)
+                                           EXCEPTIONS type_not_found = 1
+                                                      OTHERS         = 2 ).
+      IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
+        client->message_toast_display( |Table { table } does not exist.| ).
+        RETURN.
+      ENDIF.
 
-        cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
-                                             RECEIVING  p_descr_ref    = DATA(descr)
-                                             EXCEPTIONS type_not_found = 1
-                                                        OTHERS         = 2 ).
-        IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
-          client->message_toast_display( |Table { table } does not exist.| ).
-          RETURN.
-        ENDIF.
+      mv_table = table.
+      mv_check_table_input = abap_false.
 
-        mv_table = table.
-        mv_check_table_input = abap_false.
+      on_init( ).
 
-        on_init( ).
+      render_main( ).
 
-        render_main( ).
+    ENDIF.
 
-    ENDCASE.
+  ENDMETHOD.
+
+  METHOD copy_corresponding.
+
+    FIELD-SYMBOLS <ls_source> TYPE any.
+    FIELD-SYMBOLS <ls_target> TYPE any.
+
+    CLEAR ct_target.
+    LOOP AT it_source ASSIGNING <ls_source>.
+      APPEND INITIAL LINE TO ct_target ASSIGNING <ls_target>.
+      MOVE-CORRESPONDING <ls_source> TO <ls_target>.
+    ENDLOOP.
 
   ENDMETHOD.
 

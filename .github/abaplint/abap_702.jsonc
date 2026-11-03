@@ -9,54 +9,44 @@
       "files": "/src/**/*.*"
     },
     {
+      // the downported layout-management (its 702 branch)
       "url": "https://github.com/abap2UI5-addons/layout-management",
-      "folder": "/abap2UI5-layout",
+      "branch": "702",
+      "folder": "/layout-management",
       "files": "/src/**/*.*"
     },
     {
+      // the downported abap2UI5 (branch 702 is generated from main)
       "url": "https://github.com/abap2UI5/abap2UI5",
+      "branch": "702",
       "folder": "/abap2UI5",
       "files": "/src/**/*.*"
     },
     {
+      // the downported popups (its 702 branch)
       "url": "https://github.com/abap2UI5-addons/popups",
-      "folder": "/src",
+      "branch": "702",
+      "folder": "/popups",
       "files": "/src/**/*.*"
     }
   ],
-  "rename": {
-    "output": "output",
-    "patterns": [
-      {
-        "type": "CLAS|INTF|TABL",
-        "oldName": "z2ui5_(.*)",
-        "newName": "zabap2ui5_$1"
-      }
-    ]
-  },
   "syntax": {
-    "version": "v750",
-    "errorNamespace": "."
+    "version": "v702",
+    "errorNamespace": "^(Z|Y|LCL_|TY_|LIF_)"
   },
   "rules": {
-    "allowed_object_types": {
-      "allowed": [
-        "CLAS",
-        "DEVC",
-        "INTF",
-        "TABL"
-      ]
-    },
-    "allowed_object_naming": true,
+    "downport": true,
     "begin_end_names": true,
     "check_ddic": true,
     "check_include": true,
     "check_syntax": true,
     "global_class": true,
+    "definitions_top": true,
     "implement_methods": true,
     "method_implemented_twice": true,
     "parser_error": true,
     "superclass_final": true,
+    "uncaught_exception": true,
     "unknown_types": true,
     "xml_consistency": true
   }

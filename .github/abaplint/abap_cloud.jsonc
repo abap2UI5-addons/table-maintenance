@@ -20,7 +20,7 @@
     },
     {
       "url": "https://github.com/abap2UI5-addons/popups",
-      "folder": "/src",
+      "folder": "/popups",
       "files": "/src/**/*.*"
     }
     ],

@@ -20,7 +20,7 @@
     },
     {
       "url": "https://github.com/abap2UI5-addons/popups",
-      "folder": "/src",
+      "folder": "/popups",
       "files": "/src/**/*.*"
     }
   ],
@@ -282,6 +282,115 @@
     "when_others_last": true,
     "whitespace_end": true,
     "wrong_abapdoc_position": true,
-    "xml_bom": true
+    "xml_bom": true,
+    // added 2026-11: the rules of abap2UI5's abaplint.jsonc this repository
+    // passes without a finding, with its settings, and allowed_object_types
+    // with the object types this repository ships
+    "abapdoc_html_tag": true,
+    "abapdoc_leading_at": true,
+    "abapdoc_parameter_names": true,
+    "abapdoc_shorttext_length": true,
+    "allowed_object_types": {
+      "allowed": [
+        "CLAS",
+        "DEVC",
+        "INTF"
+      ]
+    },
+    "bound_check_after_create": true,
+    "cds_comment_style": true,
+    "cds_legacy_view": true,
+    "changing_sorted_line": true,
+    "clear_after_declaration": true,
+    "clear_before_overwrite": true,
+    "constant_condition": true,
+    "copy_of_initial_variable": true,
+    "delete_index_in_loop": true,
+    "final_newline": true,
+    // an allow list matching no object: the default, empty, allows every one
+    "forbidden_kernel_write": {
+      "allow": [
+        "^$"
+      ]
+    },
+    "inline_packed_computation": true,
+    "no_mandt_in_database_operations": true,
+    "object_naming": {
+      "severity": "Error",
+      "patternKind": "required",
+      "ignoreNames": [],
+      "ignorePatterns": [],
+      "clas": "^Z2UI5_C(L|X)",
+      "intf": "^Z2UI5_IF",
+      "prog": "^Z",
+      "fugr": "^Z",
+      "tabl": "^Z",
+      "ttyp": "^Z",
+      "dtel": "^Z",
+      "doma": "^Z",
+      "msag": "^Z",
+      "tran": "^Z",
+      "enqu": "^EZ",
+      "auth": "^Z",
+      "pinf": "^Z",
+      "idoc": "^Z",
+      "xslt": "^Z",
+      "ssfo": "^Z",
+      "ssst": "^Z",
+      "shlp": "^Z"
+    },
+    "range_row_values": true,
+    "redundant_cast": true,
+    "smim_consistency": true,
+    "sort_empty_key": true,
+    // added 2026-11 with their findings fixed (abap2UI5 settings). Exceptions:
+    // no_aliases excludes z2ui5_cl_tm_001: its ALIASES are public, callers in
+    // other systems address the interface members by the alias names;
+    // unused_methods excludes z2ui5_cl_tm_pop: set_row_id is a protected method of
+    // a non-final class, a subclass elsewhere may call it; unused_variables also
+    // skips mv_f4_fname, mv_shlpfield and mv_transport, protected attributes of
+    // the non-final z2ui5_cl_tm_001 for the same reason; subrc_after_assign
+    // excludes z2ui5_cl_tm_context, the vendored copy of abap-util (fixed there,
+    // not here)
+    "change_if_to_case": true,
+    "if_in_if": true,
+    "no_aliases": {
+      "exclude": [
+        "/src/z2ui5_cl_tm_001"
+      ]
+    },
+    "short_case": true,
+    "subrc_after_assign": {
+      "exclude": [
+        "/src/z2ui5_cl_tm_context"
+      ]
+    },
+    "unused_methods": {
+      "exclude": [
+        "/src/z2ui5_cl_tm_pop"
+      ]
+    },
+    "unused_variables": {
+      "severity": "Error",
+      "skipNames": [
+        "lv_dummy",
+        "lv_dummy2",
+        "lv_dummy3",
+        "lv_dummy4",
+        "<dummy>",
+        "mv_f4_fname",
+        "mv_shlpfield",
+        "mv_transport"
+      ]
+    },
+    "use_bool_expression": true,
+    // added 2026-11 with its findings fixed: UNASSIGN before an ASSIGN in a loop.
+    // The two in the vendored z2ui5_cl_tm_context were fixed in abap-util
+    // (zabaputil_cl_util_context) and copied from there
+    "is_assigned_in_loop": true,
+    // added 2026-11: newer abaplint rules that report nothing here
+    "abapdoc_short_link": true,
+    "boolean_flag_via_if": true,
+    "cast_via_generic_reference": true
   }
 }
