@@ -210,7 +210,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 *      DATA(text) = mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-tlabel.
 
       DATA(text) = z2ui5_cl_tm_context=>rtti_get_data_element_texts(
-                       CONV #( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
+                       CONV string( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
 
       simple_form->tag( `Label`
           )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN `Bold` ELSE `Standard` )
