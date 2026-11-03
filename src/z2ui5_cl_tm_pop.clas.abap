@@ -132,11 +132,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-      IF <row_id> IS ASSIGNED.
-        IF <row_id> = mv_row_id.
-          found = abap_true.
-          EXIT.
-        ENDIF.
+      IF <row_id> IS ASSIGNED AND <row_id> = mv_row_id.
+        found = abap_true.
+        EXIT.
       ENDIF.
 
     ENDLOOP.
@@ -189,7 +187,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     " all components - in edit mode the key fields are not editable
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies).
 
-      DATA(enabled) = COND #( WHEN dfies->keyflag = abap_true AND mv_edit = abap_true THEN abap_false ELSE abap_true ).
+      DATA(enabled) = xsdbool( NOT ( dfies->keyflag = abap_true AND mv_edit = abap_true ) ).
 
       IF dfies->fieldname = 'MANDT'.
         enabled = abap_false.
@@ -252,26 +250,27 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       ELSE.
 
-        IF dfies->inttype = 'D'.
+        CASE dfies->inttype.
+          WHEN 'D'.
 
-          simple_form->tag( `DatePicker`
-              )->a( n = `value` v = client->_bind_edit( <val> ) ).
+            simple_form->tag( `DatePicker`
+                )->a( n = `value` v = client->_bind_edit( <val> ) ).
 
-        ELSEIF dfies->inttype = 'T'.
+          WHEN 'T'.
 
-          simple_form->tag( `TimePicker`
-              )->a( n = `value` v = client->_bind_edit( <val> ) ).
+            simple_form->tag( `TimePicker`
+                )->a( n = `value` v = client->_bind_edit( <val> ) ).
 
-        ELSE.
+          WHEN OTHERS.
 
-          simple_form->tag( `Input`
-              )->a( n = `value` v = client->_bind_edit( <val> )
-              )->a( n = `showValueHelp` b = abap_false
-              )->a( n = `enabled` b = enabled
-              )->a( n = `type` v = type
-              )->a( n = `maxLength` v = dfies->leng ).
+            simple_form->tag( `Input`
+                )->a( n = `value` v = client->_bind_edit( <val> )
+                )->a( n = `showValueHelp` b = abap_false
+                )->a( n = `enabled` b = enabled
+                )->a( n = `type` v = type
+                )->a( n = `maxLength` v = dfies->leng ).
 
-        ENDIF.
+        ENDCASE.
 
       ENDIF.
 
@@ -617,10 +616,8 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-      IF <row_id> IS ASSIGNED.
-        IF <row_id> = active_row.
-          data_to_table( CHANGING row = <line> ).
-        ENDIF.
+      IF <row_id> IS ASSIGNED AND <row_id> = active_row.
+        data_to_table( CHANGING row = <line> ).
       ENDIF.
 
     ENDLOOP.

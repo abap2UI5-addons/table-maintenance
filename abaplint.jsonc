@@ -337,6 +337,47 @@
     "range_row_values": true,
     "redundant_cast": true,
     "smim_consistency": true,
-    "sort_empty_key": true
+    "sort_empty_key": true,
+    // added 2026-11 with their findings fixed (abap2UI5 settings). Exceptions:
+    // no_aliases excludes z2ui5_cl_tm_001: its ALIASES are public, callers in
+    // other systems address the interface members by the alias names;
+    // unused_methods excludes z2ui5_cl_tm_pop: set_row_id is a protected method of
+    // a non-final class, a subclass elsewhere may call it; unused_variables also
+    // skips mv_f4_fname, mv_shlpfield and mv_transport, protected attributes of
+    // the non-final z2ui5_cl_tm_001 for the same reason; subrc_after_assign
+    // excludes z2ui5_cl_tm_context, the vendored copy of abap-util (fixed there,
+    // not here)
+    "change_if_to_case": true,
+    "if_in_if": true,
+    "no_aliases": {
+      "exclude": [
+        "/src/z2ui5_cl_tm_001"
+      ]
+    },
+    "short_case": true,
+    "subrc_after_assign": {
+      "exclude": [
+        "/src/z2ui5_cl_tm_context"
+      ]
+    },
+    "unused_methods": {
+      "exclude": [
+        "/src/z2ui5_cl_tm_pop"
+      ]
+    },
+    "unused_variables": {
+      "severity": "Error",
+      "skipNames": [
+        "lv_dummy",
+        "lv_dummy2",
+        "lv_dummy3",
+        "lv_dummy4",
+        "<dummy>",
+        "mv_f4_fname",
+        "mv_shlpfield",
+        "mv_transport"
+      ]
+    },
+    "use_bool_expression": true
   }
 }

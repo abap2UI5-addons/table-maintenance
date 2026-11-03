@@ -689,14 +689,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
               )->a( n = `text` v = sub_col ).
         ENDIF.
 
+      ELSEIF layout->reference_field IS NOT INITIAL.
+        cells->ele( `ObjectIdentifier`
+            )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
       ELSE.
-        IF layout->reference_field IS NOT INITIAL.
-          cells->ele( `ObjectIdentifier`
-              )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
-        ELSE.
-          cells->ele( `ObjectIdentifier`
-              )->a( n = `text` v = |\{{ layout->fname }\}| ).
-        ENDIF.
+        cells->ele( `ObjectIdentifier`
+            )->a( n = `text` v = |\{{ layout->fname }\}| ).
       ENDIF.
     ENDLOOP.
 
@@ -948,9 +946,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_EDIT'.
 
-        mv_multi_edit = COND #( WHEN mv_multi_edit = abap_false THEN abap_true ELSE abap_false ).
+        mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
         DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
-        selkz->* = COND #( WHEN mv_multi_edit = abap_true THEN abap_true ELSE abap_false ).
+        selkz->* = xsdbool( mv_multi_edit = abap_true ).
 
         IF mv_multi_edit = abap_true.
           CLEAR mv_search_value.
@@ -1202,11 +1200,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
     ASSIGN mt_table->* TO FIELD-SYMBOL(<mt_table>).
 
-    IF <mt_table_tmp> <> <mt_table>.
-      mv_change_active = abap_true.
-    ELSE.
-      mv_change_active = abap_false.
-    ENDIF.
+    mv_change_active = xsdbool( <mt_table_tmp> <> <mt_table> ).
 
     view_model_update( ).
 
@@ -1439,33 +1433,31 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD on_event_table_input.
 
-    CASE client->get( )-event.
+    IF client->get( )-event = `TABLE_OPEN`.
 
-      WHEN `TABLE_OPEN`.
+      DATA(table) = to_upper( condense( mv_table_input ) ).
+      IF table IS INITIAL.
+        client->message_toast_display( `Enter a table name.` ).
+        RETURN.
+      ENDIF.
 
-        DATA(table) = to_upper( condense( mv_table_input ) ).
-        IF table IS INITIAL.
-          client->message_toast_display( `Enter a table name.` ).
-          RETURN.
-        ENDIF.
+      cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
+                                           RECEIVING  p_descr_ref    = DATA(descr)
+                                           EXCEPTIONS type_not_found = 1
+                                                      OTHERS         = 2 ).
+      IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
+        client->message_toast_display( |Table { table } does not exist.| ).
+        RETURN.
+      ENDIF.
 
-        cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
-                                             RECEIVING  p_descr_ref    = DATA(descr)
-                                             EXCEPTIONS type_not_found = 1
-                                                        OTHERS         = 2 ).
-        IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
-          client->message_toast_display( |Table { table } does not exist.| ).
-          RETURN.
-        ENDIF.
+      mv_table = table.
+      mv_check_table_input = abap_false.
 
-        mv_table = table.
-        mv_check_table_input = abap_false.
+      on_init( ).
 
-        on_init( ).
+      render_main( ).
 
-        render_main( ).
-
-    ENDCASE.
+    ENDIF.
 
   ENDMETHOD.
 
