@@ -1829,11 +1829,13 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
           LOOP AT comps INTO comp.
 
+            UNASSIGN <value>.
             ASSIGN COMPONENT comp-name OF STRUCTURE <line> TO <value>.
             IF <value> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
 
+            UNASSIGN <value_dest>.
             ASSIGN COMPONENT comp-name OF STRUCTURE s_dfies TO <value_dest>.
             IF <value_dest> IS NOT ASSIGNED.
               CONTINUE.

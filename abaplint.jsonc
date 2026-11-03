@@ -384,14 +384,10 @@
       ]
     },
     "use_bool_expression": true,
-    // added 2026-11 with its findings fixed: UNASSIGN before an ASSIGN in a loop
-    // (an inline FIELD-SYMBOL( ) of an ASSIGN COMPONENT became FIELD-SYMBOLS ... TYPE any).
-    // z2ui5_cl_tm_context is the vendored abap-util copy: its two findings belong upstream
-    "is_assigned_in_loop": {
-      "exclude": [
-        "z2ui5_cl_tm_context\\."
-      ]
-    },
+    // added 2026-11 with its findings fixed: UNASSIGN before an ASSIGN in a loop.
+    // The two in the vendored z2ui5_cl_tm_context were fixed in abap-util
+    // (zabaputil_cl_util_context) and copied from there
+    "is_assigned_in_loop": true,
     // added 2026-11: newer abaplint rules that report nothing here
     "abapdoc_short_link": true,
     "boolean_flag_via_if": true,
