@@ -99,7 +99,7 @@ of the installation with the same name.
 
 ## Features
 
-* Edit Data, Adjust Customizing entries with Value-Help, Fixed Values and Search-Helps, Add Entries, Delete Entires, Transport Changes
+* Edit Data, Adjust Customizing entries with Value-Help, Fixed Values and Search-Helps, Add Entries, Delete Entries, Transport Changes
 
 ## Security
 

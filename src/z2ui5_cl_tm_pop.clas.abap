@@ -477,7 +477,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     " e   Decimal Floating Point Number, 34 Digits
     " j   Static Boxed Components
     " k   Generic Boxed Components
-    " z   Node Line for Stuctured Objects
+    " z   Node Line for Structured Objects
     " 8   Whole Number (8-Byte Integer with Sign)
     " p   Time stamp 'yyyy-mm-dd hh:mm:ss[.nnnnnnn]'
 
