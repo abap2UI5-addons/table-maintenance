@@ -57,7 +57,7 @@ CLASS z2ui5_cl_tm_context DEFINITION
         v TYPE string,
       END OF ty_s_name_value.
 
-    TYPES ty_t_name_value TYPE STANDARD TABLE OF ty_s_name_value WITH EMPTY KEY.
+    TYPES ty_t_name_value TYPE STANDARD TABLE OF ty_s_name_value WITH DEFAULT KEY.
 
     TYPES:
       BEGIN OF ty_s_msg,
@@ -72,7 +72,7 @@ CLASS z2ui5_cl_tm_context DEFINITION
         timestampl TYPE timestampl,
         t_meta     TYPE ty_t_name_value,
       END OF ty_s_msg,
-      ty_t_msg TYPE STANDARD TABLE OF ty_s_msg WITH EMPTY KEY.
+      ty_t_msg TYPE STANDARD TABLE OF ty_s_msg WITH DEFAULT KEY.
 
     CLASS-METHODS msg_get_t
       IMPORTING
@@ -513,6 +513,7 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD c_trim.
+      DATA lv_before LIKE result.
 
     result = val.
     " spaces and tabs alternate at either end (`\t \tx`) - one pass of each
@@ -521,7 +522,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " standing. Every pass that changes something shortens the string, so
     " the loop ends
     DO.
-      DATA(lv_before) = result.
+
+      lv_before = result.
       result = shift_left( shift_right( result ) ).
       result = shift_right( val = result
                             sub = cv_char_util_horizontal_tab ).
@@ -555,9 +557,11 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " back the object already in hand - or fail for a local include type
     " whose absolute name does not resolve, where the direct cast cannot
     DATA sdescr TYPE REF TO cl_abap_structdescr.
+        DATA lx_cast TYPE REF TO cx_sy_move_cast_error.
     TRY.
         sdescr ?= type.
-      CATCH cx_sy_move_cast_error INTO DATA(lx_cast).
+
+      CATCH cx_sy_move_cast_error INTO lx_cast.
         RAISE EXCEPTION TYPE z2ui5_cx_tm_error
           EXPORTING
             val      = |Include type '{ type->absolute_name }' is not a structure|
@@ -569,6 +573,11 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD expand_components.
+    DATA temp1 LIKE LINE OF val.
+    DATA lr_comp LIKE REF TO temp1.
+        DATA lt_include TYPE abap_component_tab.
+          DATA temp2 LIKE LINE OF lt_include.
+          DATA lr_include LIKE REF TO temp2.
 
     " see the declaration: bounded so a cyclic include chain surfaces as a
     " readable error instead of a stack-overflow dump. 16 nested include
@@ -579,16 +588,21 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
           val = `RTTI_INCLUDE_RECURSION - include expansion exceeded 16 levels (cyclic include?)`.
     ENDIF.
 
-    LOOP AT val REFERENCE INTO DATA(lr_comp).
+
+
+    LOOP AT val REFERENCE INTO lr_comp.
       IF lr_comp->as_include = abap_true.
         " INCLUDE ... RENAMING WITH SUFFIX: the structure's components are
         " named <component><suffix>, and every nested level adds its own -
         " the bare include names do not exist on the structure, so a
         " binding path or ASSIGN COMPONENT built from them fails
-        DATA(lt_include) = rtti_get_t_attri_by_include( type  = lr_comp->type
+
+        lt_include = rtti_get_t_attri_by_include( type  = lr_comp->type
                                                         depth = depth + 1 ).
         IF lr_comp->suffix IS NOT INITIAL.
-          LOOP AT lt_include REFERENCE INTO DATA(lr_include).
+
+
+          LOOP AT lt_include REFERENCE INTO lr_include.
             lr_include->name = lr_include->name && lr_comp->suffix.
           ENDLOOP.
         ENDIF.
@@ -602,7 +616,9 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD rtti_get_t_attri_by_oref.
 
-    result = CAST cl_abap_classdescr( cl_abap_objectdescr=>describe_by_object_ref( val ) )->attributes.
+    DATA temp3 TYPE REF TO cl_abap_classdescr.
+    temp3 ?= cl_abap_objectdescr=>describe_by_object_ref( val ).
+    result = temp3->attributes.
 
   ENDMETHOD.
 
@@ -612,6 +628,11 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     DATA lo_type          TYPE REF TO cl_abap_typedescr.
     " declared, not CONV string( ) - see error_get_attributes
     DATA lv_absolute_name TYPE string.
+        DATA temp4 TYPE REF TO cl_abap_structdescr.
+        DATA temp5 TYPE REF TO cl_abap_structdescr.
+        DATA temp1 TYPE REF TO cl_abap_tabledescr.
+    DATA lr_cache TYPE REF TO z2ui5_cl_tm_context=>ty_s_attri_cache.
+      DATA temp6 TYPE z2ui5_cl_tm_context=>ty_s_attri_cache.
 
     " describe_by_data never fails for a data object, and the reference case
     " is the one branch. The fallback chain that used to sit here - a second
@@ -625,9 +646,15 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
     CASE lo_type->kind.
       WHEN cl_abap_typedescr=>kind_struct.
-        lo_struct = CAST #( lo_type ).
+
+        temp4 ?= lo_type.
+        lo_struct = temp4.
       WHEN cl_abap_typedescr=>kind_table.
-        lo_struct = CAST #( CAST cl_abap_tabledescr( lo_type )->get_table_line_type( ) ).
+
+
+        temp1 ?= lo_type.
+        temp5 ?= temp1->get_table_line_type( ).
+        lo_struct = temp5.
       WHEN OTHERS.
         lo_struct ?= lo_type.
     ENDCASE.
@@ -635,7 +662,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " descriptor instances are singletons per type, so the identity check
     " guards against absolute names reused by other (local/anonymous) types
     lv_absolute_name = lo_struct->absolute_name.
-    READ TABLE mt_attri_cache REFERENCE INTO DATA(lr_cache)
+
+    READ TABLE mt_attri_cache REFERENCE INTO lr_cache
          WITH TABLE KEY absolute_name = lv_absolute_name.
     IF sy-subrc = 0 AND lr_cache->o_struct = lo_struct.
       result = lr_cache->t_attri.
@@ -648,14 +676,21 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       lr_cache->o_struct = lo_struct.
       lr_cache->t_attri  = result.
     ELSE.
-      INSERT VALUE #( absolute_name = lv_absolute_name
-                      o_struct      = lo_struct
-                      t_attri       = result ) INTO TABLE mt_attri_cache.
+
+      CLEAR temp6.
+      temp6-absolute_name = lv_absolute_name.
+      temp6-o_struct = lo_struct.
+      temp6-t_attri = result.
+      INSERT temp6 INTO TABLE mt_attri_cache.
     ENDIF.
 
   ENDMETHOD.
 
   METHOD rtti_get_t_ddic_fixed_values.
+        DATA temp7 TYPE string.
+        DATA typedescr TYPE REF TO cl_abap_typedescr.
+        DATA temp8 TYPE REF TO cl_abap_elemdescr.
+        DATA elemdescr LIKE temp8.
 
     IF rollname IS INITIAL.
       RETURN.
@@ -663,15 +698,21 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
     TRY.
 
-        cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = CONV string( rollname )
-                                             RECEIVING  p_descr_ref    = DATA(typedescr)
+
+        temp7 = rollname.
+
+        cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = temp7
+                                             RECEIVING  p_descr_ref    = typedescr
                                              EXCEPTIONS type_not_found = 1
                                                         OTHERS         = 2 ).
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
 
-        DATA(elemdescr) = CAST cl_abap_elemdescr( typedescr ).
+
+        temp8 ?= typedescr.
+
+        elemdescr = temp8.
 
         result = rtti_get_t_fixvalues( elemdescr = elemdescr
                                        langu     = langu ).
@@ -683,9 +724,15 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD conv_exit.
 
-    DATA(conex) = COND string( WHEN output = abap_true
-                               THEN |CONVERSION_EXIT_{ convexit }_OUTPUT|
-                               ELSE |CONVERSION_EXIT_{ convexit }_INPUT| ).
+    DATA temp9 TYPE string.
+    DATA conex LIKE temp9.
+    IF output = abap_true.
+      temp9 = |CONVERSION_EXIT_{ convexit }_OUTPUT|.
+    ELSE.
+      temp9 = |CONVERSION_EXIT_{ convexit }_INPUT|.
+    ENDIF.
+
+    conex = temp9.
 
     TRY.
         IF convexit = `CUNIT`.
@@ -718,9 +765,21 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD url_param_get.
 
-    DATA(lt_params) = url_param_get_tab( url ).
-    DATA(lv_val) = c_trim_lower( val ).
-    result = VALUE #( lt_params[ n = lv_val ]-v OPTIONAL ).
+    DATA lt_params TYPE z2ui5_cl_tm_context=>ty_t_name_value.
+    DATA lv_val TYPE string.
+    DATA temp10 TYPE string.
+    DATA temp11 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
+    lt_params = url_param_get_tab( url ).
+
+    lv_val = c_trim_lower( val ).
+
+    CLEAR temp10.
+
+    READ TABLE lt_params INTO temp11 WITH KEY n = lv_val.
+    IF sy-subrc = 0.
+      temp10 = temp11-v.
+    ENDIF.
+    result = temp10.
 
   ENDMETHOD.
 
@@ -733,6 +792,17 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " declared, not inline: DATA( ) from a generic CLIKE parameter is
     " "fixed type STRING used for generic type CLIKE" in the extended check
     DATA lv_search TYPE string.
+    DATA lv_startup TYPE string.
+      DATA lv_before TYPE string.
+      DATA lv_packed TYPE string.
+      DATA lv_rest TYPE string.
+    TYPES temp1 TYPE STANDARD TABLE OF string WITH DEFAULT KEY.
+DATA lt_param TYPE temp1.
+    DATA temp12 LIKE LINE OF lt_param.
+    DATA lr_param LIKE REF TO temp12.
+      DATA lv_name TYPE string.
+      DATA lv_value TYPE string.
+      DATA temp13 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
     lv_search = val.
     IF lv_search CS `?`.
       lv_search = substring_after( val = lv_search
@@ -747,7 +817,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " encoded `&` or `=` in any other value apart (`a=x%26y` became the
     " two parameters a=x and y=), and app_get_url wrote the damage back
     " into every generated link
-    DATA(lv_startup) = substring_after( val = |&{ lv_search }|
+
+    lv_startup = substring_after( val = |&{ lv_search }|
                                         sub = `&sap-startup-params=` ).
     IF lv_startup IS NOT INITIAL.
       " what stands BEFORE the wrapper is as much a parameter as what follows
@@ -756,9 +827,12 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       " app_get_url rebuilt from this table. lv_before keeps the prepended
       " `&`, so the empty first segment it produces below is skipped like a
       " trailing one
-      DATA(lv_before) = substring_before( val = |&{ lv_search }|
+
+      lv_before = substring_before( val = |&{ lv_search }|
                                           sub = `&sap-startup-params=` ).
-      SPLIT lv_startup AT `&` INTO DATA(lv_packed) DATA(lv_rest).
+
+
+      SPLIT lv_startup AT `&` INTO lv_packed lv_rest.
       lv_packed = replace( val  = lv_packed
                            sub  = `%3D`
                            with = `=`
@@ -782,10 +856,16 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    SPLIT lv_search AT `&` INTO TABLE DATA(lt_param).
 
-    LOOP AT lt_param REFERENCE INTO DATA(lr_param).
-      SPLIT lr_param->* AT `=` INTO DATA(lv_name) DATA(lv_value).
+
+    SPLIT lv_search AT `&` INTO TABLE lt_param.
+
+
+
+    LOOP AT lt_param REFERENCE INTO lr_param.
+
+
+      SPLIT lr_param->* AT `=` INTO lv_name lv_value.
       " an empty segment (empty search string, trailing &) would otherwise
       " produce a phantom nameless parameter that url_param_create_url
       " writes back out as a stray `=&`
@@ -795,13 +875,26 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       " normalize the name so lookups are case-insensitive on every input
       " shape (with or without a leading path/question mark) - the value
       " keeps its original case
-      INSERT VALUE #( n = c_trim_lower( lv_name )
-                      v = lv_value ) INTO TABLE result.
+
+      CLEAR temp13.
+      temp13-n = c_trim_lower( lv_name ).
+      temp13-v = lv_value.
+      INSERT temp13 INTO TABLE result.
     ENDLOOP.
 
   ENDMETHOD.
 
   METHOD rtti_get_t_attri_by_table_name.
+        DATA lo_obj TYPE REF TO cl_abap_typedescr.
+        DATA temp14 TYPE REF TO cl_abap_structdescr.
+        DATA lo_struct LIKE temp14.
+            DATA temp15 TYPE REF TO cl_abap_tabledescr.
+            DATA lo_tab LIKE temp15.
+            DATA temp16 TYPE REF TO cl_abap_structdescr.
+    DATA lt_comps TYPE abap_component_tab.
+    DATA temp17 LIKE LINE OF lt_comps.
+    DATA lr_comp LIKE REF TO temp17.
+        DATA lt_attri TYPE abap_component_tab.
 
     IF table_name IS INITIAL.
       RAISE EXCEPTION TYPE z2ui5_cx_tm_error
@@ -810,8 +903,9 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     ENDIF.
 
     TRY.
+
         cl_abap_structdescr=>describe_by_name( EXPORTING  p_name         = table_name
-                                               RECEIVING  p_descr_ref    = DATA(lo_obj)
+                                               RECEIVING  p_descr_ref    = lo_obj
                                                EXCEPTIONS type_not_found = 1
                                                           OTHERS         = 2
             ).
@@ -821,7 +915,10 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
             EXPORTING
               val = |TABLE_NOT_FOUND_NAME___{ table_name }|.
         ENDIF.
-        DATA(lo_struct) = CAST cl_abap_structdescr( lo_obj ).
+
+        temp14 ?= lo_obj.
+
+        lo_struct = temp14.
 
       CATCH cx_root.
 
@@ -837,19 +934,28 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
                   val = |TABLE_NOT_FOUND_NAME___{ table_name }|.
             ENDIF.
 
-            DATA(lo_tab) = CAST cl_abap_tabledescr( lo_obj ).
-            lo_struct = CAST cl_abap_structdescr( lo_tab->get_table_line_type( ) ).
+
+            temp15 ?= lo_obj.
+
+            lo_tab = temp15.
+
+            temp16 ?= lo_tab->get_table_line_type( ).
+            lo_struct = temp16.
           CATCH cx_root.
             RETURN.
         ENDTRY.
 
     ENDTRY.
 
-    DATA(lt_comps) = lo_struct->get_components( ).
 
-    LOOP AT lt_comps REFERENCE INTO DATA(lr_comp).
+    lt_comps = lo_struct->get_components( ).
+
+
+
+    LOOP AT lt_comps REFERENCE INTO lr_comp.
       IF lr_comp->as_include = abap_true.
-        DATA(lt_attri) = rtti_get_t_attri_by_include( lr_comp->type ).
+
+        lt_attri = rtti_get_t_attri_by_include( lr_comp->type ).
         INSERT LINES OF lt_attri INTO TABLE result.
       ELSE.
         INSERT lr_comp->* INTO TABLE result.
@@ -908,21 +1014,35 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD msg_get.
 
-    DATA(lt_msg) = msg_get_t( val  = val
+    DATA lt_msg TYPE z2ui5_cl_tm_context=>ty_t_msg.
+    DATA temp18 TYPE z2ui5_cl_tm_context=>ty_s_msg.
+    DATA temp19 TYPE z2ui5_cl_tm_context=>ty_s_msg.
+    lt_msg = msg_get_t( val  = val
                               val2 = val2 ).
-    result = VALUE #( lt_msg[ 1 ] OPTIONAL ).
+
+    CLEAR temp18.
+
+    READ TABLE lt_msg INTO temp19 INDEX 1.
+    IF sy-subrc = 0.
+      temp18 = temp19.
+    ENDIF.
+    result = temp18.
 
   ENDMETHOD.
 
   METHOD msg_get_by_msg.
 
-    DATA(ls_msg) = VALUE ty_s_msg(
-      id         = id
-      no         = no
-      v1         = v1
-      v2         = v2
-      v3         = v3
-      v4         = v4 ).
+    DATA temp20 TYPE ty_s_msg.
+    DATA ls_msg LIKE temp20.
+    CLEAR temp20.
+    temp20-id = id.
+    temp20-no = no.
+    temp20-v1 = v1.
+    temp20-v2 = v2.
+    temp20-v3 = v3.
+    temp20-v4 = v4.
+
+    ls_msg = temp20.
     result = msg_get( ls_msg ).
 
   ENDMETHOD.
@@ -1151,6 +1271,7 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     DATA lv_uuid      TYPE c LENGTH 32.
     DATA lv_classname TYPE string.
     DATA lv_fm        TYPE string.
+        DATA lx_uuid TYPE REF TO cx_root.
 
     TRY.
 
@@ -1172,7 +1293,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
         result = lv_uuid.
 
-      CATCH cx_root INTO DATA(lx_uuid).
+
+      CATCH cx_root INTO lx_uuid.
         " both UUID mechanisms failed - raise the framework exception so the
         " consumer's single top-level catch can turn it into a handled error.
         " ASSERT would raise the uncatchable ASSERTION_FAILED and bypass that
@@ -1196,11 +1318,19 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD msg_get_internal.
+        FIELD-SYMBOLS <tab> TYPE ANY TABLE.
+        DATA lt_attri TYPE abap_component_tab.
+        DATA temp21 TYPE ty_s_msg.
+        DATA ls_result LIKE temp21.
+        DATA temp22 LIKE LINE OF lt_attri.
+        DATA ls_attri LIKE REF TO temp22.
+          FIELD-SYMBOLS <comp> TYPE any.
+          DATA temp23 TYPE z2ui5_cl_tm_context=>ty_s_msg.
 
     CASE rtti_get_type_kind( val ).
 
       WHEN cl_abap_datadescr=>typekind_table.
-        FIELD-SYMBOLS <tab> TYPE ANY TABLE.
+
         " guarded like data_render_tab and data_get_headline - handing an
         " UNASSIGNED symbol to the method below is a GETWA_NOT_ASSIGNED
         " dump. No messages then, which is what "nothing in here is a
@@ -1222,11 +1352,18 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        DATA(lt_attri) = rtti_get_t_attri_by_any( val ).
 
-        DATA(ls_result) = VALUE ty_s_msg( ).
-        LOOP AT lt_attri REFERENCE INTO DATA(ls_attri).
-          ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO FIELD-SYMBOL(<comp>).
+        lt_attri = rtti_get_t_attri_by_any( val ).
+
+
+        CLEAR temp21.
+
+        ls_result = temp21.
+
+
+        LOOP AT lt_attri REFERENCE INTO ls_attri.
+
+          ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO <comp>.
           IF sy-subrc <> 0.
             CONTINUE.
           ENDIF.
@@ -1271,14 +1408,24 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
         " skip an empty character value like the struct branch does -
         " otherwise msg_get_t's val2 fallback can never take over and the
         " caller renders a message box with blank text
-        IF rtti_check_clike( val ) AND val IS NOT INITIAL.
-          INSERT VALUE #( text = val ) INTO TABLE result.
+        IF rtti_check_clike( val ) IS NOT INITIAL AND val IS NOT INITIAL.
+
+          CLEAR temp23.
+          temp23-text = val.
+          INSERT temp23 INTO TABLE result.
         ENDIF.
     ENDCASE.
 
   ENDMETHOD.
 
   METHOD msg_get_by_oref.
+        DATA temp24 TYPE REF TO cx_root.
+        DATA lx LIKE temp24.
+        DATA temp25 TYPE z2ui5_cl_tm_context=>ty_s_msg.
+    DATA obj TYPE REF TO object.
+    DATA lr_tab TYPE REF TO data.
+    FIELD-SYMBOLS <tab> TYPE any.
+    DATA temp26 TYPE z2ui5_cl_tm_context=>ty_s_msg.
 
     " four shapes, tried in turn and each on its own level - the nested
     " TRY/CATCH pyramid this used to be carried the attribute mapping twice,
@@ -1288,18 +1435,24 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
     " 1. an exception: its text, and its public attributes over it
     TRY.
-        DATA(lx) = CAST cx_root( val ).
+
+        temp24 ?= val.
+
+        lx = temp24.
+
+        CLEAR temp25.
+        temp25-type = `E`.
+        temp25-text = lx->get_text( ).
         INSERT msg_get_by_oref_attri( io_obj = lx
-                                      is_msg = VALUE #( type = `E`
-                                                        text = lx->get_text( ) ) ) INTO TABLE result.
+                                      is_msg = temp25 ) INTO TABLE result.
         RETURN.
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
-    DATA obj TYPE REF TO object.
+
     obj = val.
-    DATA lr_tab TYPE REF TO data.
-    FIELD-SYMBOLS <tab> TYPE any.
+
+
 
     " 2. an application log (IF_BALI_LOG)
     TRY.
@@ -1326,8 +1479,10 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     ENDTRY.
 
     " 4. any object: whatever public attributes carry a message part
+
+    CLEAR temp26.
     INSERT msg_get_by_oref_attri( io_obj = obj
-                                  is_msg = VALUE #( ) ) INTO TABLE result.
+                                  is_msg = temp26 ) INTO TABLE result.
 
   ENDMETHOD.
 
@@ -1388,9 +1543,20 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD check_is_rap_struct.
 
-    DATA(lt_attri) = rtti_get_t_attri_by_any( val ).
+    DATA lt_attri TYPE abap_component_tab.
+    DATA temp27 LIKE LINE OF lt_attri.
+    DATA ls_attri LIKE REF TO temp27.
+          DATA temp28 TYPE REF TO cl_abap_tabledescr.
+          DATA lo_line TYPE REF TO cl_abap_datadescr.
+          DATA temp29 TYPE REF TO cl_abap_structdescr.
+          DATA lt_comps TYPE abap_component_tab.
+          DATA temp30 LIKE LINE OF lt_comps.
+          DATA ls_comp LIKE REF TO temp30.
+    lt_attri = rtti_get_t_attri_by_any( val ).
 
-    LOOP AT lt_attri REFERENCE INTO DATA(ls_attri).
+
+
+    LOOP AT lt_attri REFERENCE INTO ls_attri.
       CASE ls_attri->name.
         WHEN `%MSG` OR `%FAIL` OR `%OTHER`.
           result = abap_true.
@@ -1404,10 +1570,18 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       CHECK ls_attri->type->kind = cl_abap_typedescr=>kind_table.
 
       TRY.
-          DATA(lo_line) = CAST cl_abap_tabledescr( ls_attri->type )->get_table_line_type( ).
+
+          temp28 ?= ls_attri->type.
+
+          lo_line = temp28->get_table_line_type( ).
           CHECK lo_line->kind = cl_abap_typedescr=>kind_struct.
-          DATA(lt_comps) = CAST cl_abap_structdescr( lo_line )->get_components( ).
-          LOOP AT lt_comps REFERENCE INTO DATA(ls_comp).
+
+          temp29 ?= lo_line.
+
+          lt_comps = temp29->get_components( ).
+
+
+          LOOP AT lt_comps REFERENCE INTO ls_comp.
             IF ls_comp->name = `%MSG` OR ls_comp->name = `%FAIL`.
               result = abap_true.
               RETURN.
@@ -1421,23 +1595,38 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD msg_get_rap.
 
-    DATA(lv_kind) = rtti_get_type_kind( val ).
+    DATA lv_kind TYPE string.
+    DATA lv_is_row TYPE abap_bool.
+    DATA lt_attri TYPE abap_component_tab.
+    DATA temp31 LIKE LINE OF lt_attri.
+    DATA ls_attri LIKE REF TO temp31.
+      FIELD-SYMBOLS <tab> TYPE any.
+      FIELD-SYMBOLS <ftab> TYPE ANY TABLE.
+      DATA temp32 TYPE REF TO cl_abap_tabledescr.
+      DATA lo_line TYPE REF TO cl_abap_datadescr.
+      FIELD-SYMBOLS <row> TYPE ANY.
+    lv_kind = rtti_get_type_kind( val ).
     IF lv_kind <> cl_abap_datadescr=>typekind_struct1
         AND lv_kind <> cl_abap_datadescr=>typekind_struct2.
       RETURN.
     ENDIF.
 
+
     msg_get_rap_row( EXPORTING val         = val
                                entity_name = entity_name
                      IMPORTING messages    = result
-                               is_row      = DATA(lv_is_row) ).
+                               is_row      = lv_is_row ).
     IF lv_is_row = abap_true.
       RETURN.
     ENDIF.
 
-    DATA(lt_attri) = rtti_get_t_attri_by_any( val ).
-    LOOP AT lt_attri REFERENCE INTO DATA(ls_attri).
-      ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO FIELD-SYMBOL(<tab>).
+
+    lt_attri = rtti_get_t_attri_by_any( val ).
+
+
+    LOOP AT lt_attri REFERENCE INTO ls_attri.
+
+      ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO <tab>.
       CHECK sy-subrc = 0.
       CHECK rtti_get_type_kind( <tab> ) = cl_abap_datadescr=>typekind_table.
 
@@ -1445,15 +1634,19 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       " data_get_headline - and here the symbol is LOOP-CARRIED, so an
       " ASSIGN that fails leaves it on the PREVIOUS component's table and
       " the rows below would be read out of that one
-      FIELD-SYMBOLS <ftab> TYPE ANY TABLE.
+
       UNASSIGN <ftab>.
       ASSIGN <tab> TO <ftab>.
       CHECK <ftab> IS ASSIGNED.
 
       " the row kind is a property of the table TYPE - decided once per
       " table, not asked of every row (same idea as msg_get_internal_tab)
-      DATA(lo_line) = CAST cl_abap_tabledescr( ls_attri->type )->get_table_line_type( ).
-      LOOP AT <ftab> ASSIGNING FIELD-SYMBOL(<row>).
+
+      temp32 ?= ls_attri->type.
+
+      lo_line = temp32->get_table_line_type( ).
+
+      LOOP AT <ftab> ASSIGNING <row>.
         IF lo_line->type_kind = cl_abap_datadescr=>typekind_oref.
           IF <row> IS NOT INITIAL.
             TRY.
@@ -1471,6 +1664,16 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD msg_get_rap_row.
+    DATA lv_meta_built TYPE abap_bool.
+    DATA lt_meta TYPE ty_t_name_value.
+    FIELD-SYMBOLS <msg> TYPE any.
+            DATA lt_one TYPE z2ui5_cl_tm_context=>ty_t_msg.
+            FIELD-SYMBOLS <m> LIKE LINE OF lt_one.
+    FIELD-SYMBOLS <fail> TYPE any.
+      FIELD-SYMBOLS <cause> TYPE any.
+        DATA lv_cause TYPE i.
+        DATA lv_text TYPE string.
+        DATA temp33 TYPE z2ui5_cl_tm_context=>ty_s_msg.
 
     CLEAR messages.
     is_row = abap_false.
@@ -1479,18 +1682,21 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " components three times over (element/action/tky scans), and the
     " common row in a RAP response table carries neither a filled %MSG nor
     " a %FAIL - building the block up front threw that work away per row
-    DATA lv_meta_built TYPE abap_bool.
-    DATA lt_meta TYPE ty_t_name_value.
 
-    ASSIGN COMPONENT `%MSG` OF STRUCTURE val TO FIELD-SYMBOL(<msg>).
+
+
+
+    ASSIGN COMPONENT `%MSG` OF STRUCTURE val TO <msg>.
     IF sy-subrc = 0.
       is_row = abap_true.
       IF <msg> IS NOT INITIAL.
         lt_meta = msg_get_rap_meta( val ).
         lv_meta_built = abap_true.
         TRY.
-            DATA(lt_one) = msg_get_t( <msg> ).
-            LOOP AT lt_one ASSIGNING FIELD-SYMBOL(<m>).
+
+            lt_one = msg_get_t( <msg> ).
+
+            LOOP AT lt_one ASSIGNING <m>.
               <m>-t_meta = lt_meta.
             ENDLOOP.
             INSERT LINES OF lt_one INTO TABLE messages.
@@ -1499,23 +1705,29 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    ASSIGN COMPONENT `%FAIL` OF STRUCTURE val TO FIELD-SYMBOL(<fail>).
+
+    ASSIGN COMPONENT `%FAIL` OF STRUCTURE val TO <fail>.
     IF sy-subrc = 0.
       is_row = abap_true.
-      ASSIGN COMPONENT `CAUSE` OF STRUCTURE <fail> TO FIELD-SYMBOL(<cause>).
+
+      ASSIGN COMPONENT `CAUSE` OF STRUCTURE <fail> TO <cause>.
       IF sy-subrc = 0.
         IF lv_meta_built = abap_false.
           lt_meta = msg_get_rap_meta( val ).
         ENDIF.
-        DATA lv_cause TYPE i.
+
         lv_cause = <cause>.
-        DATA(lv_text) = msg_get_rap_fail_text( lv_cause ).
+
+        lv_text = msg_get_rap_fail_text( lv_cause ).
         IF entity_name IS NOT INITIAL.
           lv_text = |{ entity_name }: { lv_text }|.
         ENDIF.
-        INSERT VALUE #( type   = `E`
-                        text   = lv_text
-                        t_meta = lt_meta ) INTO TABLE messages.
+
+        CLEAR temp33.
+        temp33-type = `E`.
+        temp33-text = lv_text.
+        temp33-t_meta = lt_meta.
+        INSERT temp33 INTO TABLE messages.
       ENDIF.
     ENDIF.
 
@@ -1532,7 +1744,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " nesting here (nothing sits between the two tests), and the second
     " operand is safe on a failed ASSIGN either way - ABAP evaluates a
     " logical expression left to right and stops once the result is decided
-    ASSIGN COMPONENT comp OF STRUCTURE val TO FIELD-SYMBOL(<comp>).
+    FIELD-SYMBOLS <comp> TYPE any.
+    ASSIGN COMPONENT comp OF STRUCTURE val TO <comp>.
     IF sy-subrc = 0 AND rtti_check_printable( <comp> ) = abap_true.
       result = <comp>.
     ENDIF.
@@ -1541,7 +1754,17 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD scan_flag_prefix.
 
-    DATA(lv_kind) = rtti_get_type_kind( val ).
+    DATA lv_kind TYPE string.
+    DATA temp34 TYPE string.
+    DATA lv_prefix LIKE temp34.
+    DATA lv_off TYPE i.
+      FIELD-SYMBOLS <sub> TYPE any.
+    DATA lv_len TYPE i.
+    DATA lt_attri TYPE abap_component_tab.
+    DATA temp35 LIKE LINE OF lt_attri.
+    DATA ls_attri LIKE REF TO temp35.
+      FIELD-SYMBOLS <flag> TYPE any.
+    lv_kind = rtti_get_type_kind( val ).
     IF lv_kind <> cl_abap_datadescr=>typekind_struct1
         AND lv_kind <> cl_abap_datadescr=>typekind_struct2.
       RETURN.
@@ -1553,10 +1776,15 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " and %OP-%ACTION. Compared against the row's own component names, the
     " two RAP prefixes never matched, and no message ever carried its
     " element or action
-    DATA(lv_prefix) = CONV string( prefix ).
-    FIND FIRST OCCURRENCE OF `-` IN lv_prefix MATCH OFFSET DATA(lv_off).
+
+    temp34 = prefix.
+
+    lv_prefix = temp34.
+
+    FIND FIRST OCCURRENCE OF `-` IN lv_prefix MATCH OFFSET lv_off.
     IF sy-subrc = 0.
-      ASSIGN COMPONENT lv_prefix(lv_off) OF STRUCTURE val TO FIELD-SYMBOL(<sub>).
+
+      ASSIGN COMPONENT lv_prefix(lv_off) OF STRUCTURE val TO <sub>.
       IF sy-subrc <> 0.
         RETURN.
       ENDIF.
@@ -1566,12 +1794,17 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(lv_len) = strlen( lv_prefix ).
-    DATA(lt_attri) = rtti_get_t_attri_by_any( val ).
-    LOOP AT lt_attri REFERENCE INTO DATA(ls_attri).
+
+    lv_len = strlen( lv_prefix ).
+
+    lt_attri = rtti_get_t_attri_by_any( val ).
+
+
+    LOOP AT lt_attri REFERENCE INTO ls_attri.
       CHECK strlen( ls_attri->name ) > lv_len.
       CHECK lv_len = 0 OR ls_attri->name(lv_len) = lv_prefix.
-      ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO FIELD-SYMBOL(<flag>).
+
+      ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO <flag>.
       CHECK sy-subrc = 0.
       CHECK <flag> IS NOT INITIAL.
       APPEND ls_attri->name+lv_len TO result.
@@ -1581,7 +1814,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD msg_get_rap_element.
 
-    DATA(lt_suffix) = scan_flag_prefix( val       = val
+    DATA lt_suffix TYPE string_table.
+    lt_suffix = scan_flag_prefix( val       = val
                                         prefix = `%ELEMENT-` ).
     result = concat_lines_of( table = lt_suffix
                               sep   = `, ` ).
@@ -1597,9 +1831,19 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD msg_get_rap_action.
 
-    DATA(lt_suffix) = scan_flag_prefix( val       = val
+    DATA lt_suffix TYPE string_table.
+    DATA temp36 TYPE string.
+    DATA temp37 TYPE string.
+    lt_suffix = scan_flag_prefix( val       = val
                                         prefix = `%OP-%ACTION-` ).
-    result = VALUE #( lt_suffix[ 1 ] OPTIONAL ).
+
+    CLEAR temp36.
+
+    READ TABLE lt_suffix INTO temp37 INDEX 1.
+    IF sy-subrc = 0.
+      temp36 = temp37.
+    ENDIF.
+    result = temp36.
 
   ENDMETHOD.
 
@@ -1619,7 +1863,8 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD msg_get_rap_tky.
 
-    ASSIGN COMPONENT `%TKY` OF STRUCTURE val TO FIELD-SYMBOL(<tky>).
+    FIELD-SYMBOLS <tky> TYPE any.
+    ASSIGN COMPONENT `%TKY` OF STRUCTURE val TO <tky>.
     IF sy-subrc <> 0 OR <tky> IS INITIAL.
       RETURN.
     ENDIF.
@@ -1629,23 +1874,39 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD msg_get_rap_flatten.
 
-    DATA(lv_kind) = rtti_get_type_kind( val ).
+    DATA lv_kind TYPE string.
+    DATA lt_attri TYPE abap_component_tab.
+    DATA lt_part TYPE string_table.
+    DATA temp38 LIKE LINE OF lt_attri.
+    DATA ls_attri LIKE REF TO temp38.
+      FIELD-SYMBOLS <comp> TYPE any.
+      DATA lv_sub_kind TYPE string.
+        DATA lv_sub TYPE string.
+            DATA lv_str TYPE string.
+            DATA temp39 LIKE LINE OF lt_part.
+    lv_kind = rtti_get_type_kind( val ).
     IF lv_kind <> cl_abap_datadescr=>typekind_struct1
         AND lv_kind <> cl_abap_datadescr=>typekind_struct2.
       RETURN.
     ENDIF.
 
-    DATA(lt_attri) = rtti_get_t_attri_by_any( val ).
-    DATA lt_part TYPE string_table.
 
-    LOOP AT lt_attri REFERENCE INTO DATA(ls_attri).
-      ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO FIELD-SYMBOL(<comp>).
+    lt_attri = rtti_get_t_attri_by_any( val ).
+
+
+
+
+    LOOP AT lt_attri REFERENCE INTO ls_attri.
+
+      ASSIGN COMPONENT ls_attri->name OF STRUCTURE val TO <comp>.
       CHECK sy-subrc = 0.
 
-      DATA(lv_sub_kind) = rtti_get_type_kind( <comp> ).
+
+      lv_sub_kind = rtti_get_type_kind( <comp> ).
       IF lv_sub_kind = cl_abap_datadescr=>typekind_struct1
           OR lv_sub_kind = cl_abap_datadescr=>typekind_struct2.
-        DATA(lv_sub) = msg_get_rap_flatten( <comp> ).
+
+        lv_sub = msg_get_rap_flatten( <comp> ).
         IF lv_sub IS NOT INITIAL.
           APPEND lv_sub TO lt_part.
         ENDIF.
@@ -1656,9 +1917,11 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
         " TRY stays for the conversions that ARE class-based - a character
         " value the packed/numeric target refuses
         TRY.
-            DATA lv_str TYPE string.
+
             lv_str = <comp>.
-            APPEND |{ ls_attri->name }={ lv_str }| TO lt_part.
+
+            temp39 = |{ ls_attri->name }={ lv_str }|.
+            APPEND temp39 TO lt_part.
           CATCH cx_root ##NO_HANDLER.
         ENDTRY.
       ENDIF.
@@ -1672,54 +1935,99 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
   METHOD msg_get_rap_meta.
 
     DATA lv TYPE string.
+      DATA temp40 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
+      DATA temp41 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
+      DATA temp42 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
+      DATA temp43 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
+      DATA temp44 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
+      DATA temp45 TYPE z2ui5_cl_tm_context=>ty_s_name_value.
 
     lv = msg_get_rap_element( val ).
     IF lv IS NOT INITIAL.
-      INSERT VALUE #( n = `element` v = lv ) INTO TABLE result.
+
+      CLEAR temp40.
+      temp40-n = `element`.
+      temp40-v = lv.
+      INSERT temp40 INTO TABLE result.
     ENDIF.
 
     lv = msg_get_rap_state_area( val ).
     IF lv IS NOT INITIAL.
-      INSERT VALUE #( n = `state_area` v = lv ) INTO TABLE result.
+
+      CLEAR temp41.
+      temp41-n = `state_area`.
+      temp41-v = lv.
+      INSERT temp41 INTO TABLE result.
     ENDIF.
 
     lv = msg_get_rap_action( val ).
     IF lv IS NOT INITIAL.
-      INSERT VALUE #( n = `action` v = lv ) INTO TABLE result.
+
+      CLEAR temp42.
+      temp42-n = `action`.
+      temp42-v = lv.
+      INSERT temp42 INTO TABLE result.
     ENDIF.
 
     lv = msg_get_rap_pid( val ).
     IF lv IS NOT INITIAL.
-      INSERT VALUE #( n = `pid` v = lv ) INTO TABLE result.
+
+      CLEAR temp43.
+      temp43-n = `pid`.
+      temp43-v = lv.
+      INSERT temp43 INTO TABLE result.
     ENDIF.
 
     lv = msg_get_rap_cid( val ).
     IF lv IS NOT INITIAL.
-      INSERT VALUE #( n = `cid` v = lv ) INTO TABLE result.
+
+      CLEAR temp44.
+      temp44-n = `cid`.
+      temp44-v = lv.
+      INSERT temp44 INTO TABLE result.
     ENDIF.
 
     lv = msg_get_rap_tky( val ).
     IF lv IS NOT INITIAL.
-      INSERT VALUE #( n = `tky` v = lv ) INTO TABLE result.
+
+      CLEAR temp45.
+      temp45-n = `tky`.
+      temp45-v = lv.
+      INSERT temp45 INTO TABLE result.
     ENDIF.
 
   ENDMETHOD.
 
   METHOD msg_get_rap_fail_text.
 
-    result = SWITCH string( cause
-      WHEN 0  THEN `Operation failed`
-      WHEN 1  THEN `Entity not found`
-      WHEN 2  THEN `Entity is locked`
-      WHEN 3  THEN `Authorization failure`
-      WHEN 4 OR 5 THEN `Concurrent modification`
-      WHEN 6  THEN `Operation disabled`
-      WHEN 7  THEN `Operation forbidden`
-      WHEN 8  THEN `Semantic error`
-      WHEN 9  THEN `Determination failed`
-      WHEN 10 THEN `Permission denied`
-      WHEN 11 THEN `Validation failed`
-      ELSE |Operation failed (cause code { cause })| ).
+    DATA temp46 TYPE string.
+    CASE cause.
+      WHEN 0.
+        temp46 = `Operation failed`.
+      WHEN 1.
+        temp46 = `Entity not found`.
+      WHEN 2.
+        temp46 = `Entity is locked`.
+      WHEN 3.
+        temp46 = `Authorization failure`.
+      WHEN 4 OR 5.
+        temp46 = `Concurrent modification`.
+      WHEN 6.
+        temp46 = `Operation disabled`.
+      WHEN 7.
+        temp46 = `Operation forbidden`.
+      WHEN 8.
+        temp46 = `Semantic error`.
+      WHEN 9.
+        temp46 = `Determination failed`.
+      WHEN 10.
+        temp46 = `Permission denied`.
+      WHEN 11.
+        temp46 = `Validation failed`.
+      WHEN OTHERS.
+        temp46 = |Operation failed (cause code { cause })|.
+    ENDCASE.
+    result = temp46.
 
   ENDMETHOD.
 
@@ -1864,17 +2172,28 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     DATA lv_tabname TYPE c LENGTH 16.
     DATA lr_ddfields TYPE REF TO data.
     TYPES ty_c30 TYPE c LENGTH 30.
-    DATA names TYPE STANDARD TABLE OF ty_c30 WITH EMPTY KEY.
+    TYPES temp2 TYPE STANDARD TABLE OF ty_c30 WITH DEFAULT KEY.
+DATA names TYPE temp2.
     FIELD-SYMBOLS <any> TYPE any.
     FIELD-SYMBOLS <field> TYPE simple.
     FIELD-SYMBOLS <ddfields> TYPE ANY TABLE.
+            DATA lv_method2 TYPE string.
+            DATA workaround TYPE string.
+            DATA temp47 TYPE REF TO cl_abap_structdescr.
+    DATA lt_comp TYPE abap_component_tab.
+    DATA temp48 LIKE LINE OF lt_comp.
+    DATA lr_comp LIKE REF TO temp48.
+      DATA lv_check_key LIKE abap_false.
+      DATA temp49 LIKE sy-subrc.
+      DATA temp50 TYPE z2ui5_cl_tm_context=>ty_s_dfies.
 
 * convert to correct type,
     lv_tabname = tabname.
 
     TRY.
         TRY.
-            DATA(lv_method2) = `XCO_CP_ABAP_DICTIONARY`.
+
+            lv_method2 = `XCO_CP_ABAP_DICTIONARY`.
             CALL METHOD (lv_method2)=>(`DATABASE_TABLE`)
               EXPORTING
                 iv_name           = lv_tabname
@@ -1890,12 +2209,14 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
               RECEIVING
                 rt_names = names.
           CATCH cx_sy_dyn_call_illegal_class.
-            DATA(workaround) = `DDFIELDS`.
+
+            workaround = `DDFIELDS`.
             CREATE DATA lr_ddfields TYPE (workaround).
             ASSIGN lr_ddfields->* TO <ddfields>.
             ASSERT sy-subrc = 0.
-            <ddfields> = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name(
-              lv_tabname ) )->get_ddic_field_list( ).
+
+            temp47 ?= cl_abap_typedescr=>describe_by_name( lv_tabname ).
+            <ddfields> = temp47->get_ddic_field_list( ).
             LOOP AT <ddfields> ASSIGNING <any>.
               ASSIGN COMPONENT `KEYFLAG` OF STRUCTURE <any> TO <field>.
               IF sy-subrc <> 0 OR <field> <> abap_true.
@@ -1910,22 +2231,30 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     ENDTRY.
 
 
-    DATA(lt_comp)  =  rtti_get_t_attri_by_any( tabname ).
-    LOOP AT lt_comp REFERENCE INTO DATA(lr_comp).
 
-      DATA(lv_check_key) = abap_false.
-      IF line_exists( names[ table_line = lr_comp->name ] ).
+    lt_comp  =  rtti_get_t_attri_by_any( tabname ).
+
+
+    LOOP AT lt_comp REFERENCE INTO lr_comp.
+
+
+      lv_check_key = abap_false.
+
+      READ TABLE names WITH KEY table_line = lr_comp->name TRANSPORTING NO FIELDS.
+      temp49 = sy-subrc.
+      IF temp49 = 0.
         lv_check_key = abap_true.
       ENDIF.
 
-      INSERT VALUE #(
-          fieldname = lr_comp->name
-          rollname  = lr_comp->name
-          keyflag = lv_check_key
-        scrtext_s =  lr_comp->name
-        scrtext_m =  lr_comp->name
-        scrtext_l =  lr_comp->name
-       ) INTO TABLE result.
+
+      CLEAR temp50.
+      temp50-fieldname = lr_comp->name.
+      temp50-rollname = lr_comp->name.
+      temp50-keyflag = lv_check_key.
+      temp50-scrtext_s = lr_comp->name.
+      temp50-scrtext_m = lr_comp->name.
+      temp50-scrtext_l = lr_comp->name.
+      INSERT temp50 INTO TABLE result.
 
     ENDLOOP.
 *            structdescr->
@@ -2096,21 +2425,28 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
 
   METHOD check_msg_container.
 
-    DATA(lv_kind) = rtti_get_type_kind( val ).
-    result = xsdbool( lv_kind = cl_abap_datadescr=>typekind_table
-                   OR lv_kind = cl_abap_datadescr=>typekind_struct1
-                   OR lv_kind = cl_abap_datadescr=>typekind_struct2
-                   OR lv_kind = cl_abap_datadescr=>typekind_oref ).
+    DATA lv_kind TYPE string.
+    DATA temp1 TYPE xsdboolean.
+    lv_kind = rtti_get_type_kind( val ).
+
+    temp1 = boolc( lv_kind = cl_abap_datadescr=>typekind_table OR lv_kind = cl_abap_datadescr=>typekind_struct1 OR lv_kind = cl_abap_datadescr=>typekind_struct2 OR lv_kind = cl_abap_datadescr=>typekind_oref ).
+    result = temp1.
 
   ENDMETHOD.
 
   METHOD msg_get_by_oref_attri.
 
     FIELD-SYMBOLS <comp> TYPE any.
+    DATA lt_attri_o TYPE abap_attrdescr_tab.
+    DATA temp51 LIKE LINE OF lt_attri_o.
+    DATA ls_attri_o LIKE REF TO temp51.
 
     result = is_msg.
-    DATA(lt_attri_o) = rtti_get_t_attri_by_oref( io_obj ).
-    LOOP AT lt_attri_o REFERENCE INTO DATA(ls_attri_o) "#EC CI_SORTSEQ
+
+    lt_attri_o = rtti_get_t_attri_by_oref( io_obj ).
+
+
+    LOOP AT lt_attri_o REFERENCE INTO ls_attri_o "#EC CI_SORTSEQ
          WHERE visibility = cv_objectdescr_public.
       " UNASSIGN + IS ASSIGNED, not sy-subrc - the loop-carried case (see
       " error_get_attributes). Here a stale 0 maps the PREVIOUS attribute's
@@ -2135,12 +2471,19 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
     " describes every table component of a row, which a business table of a
     " few thousand rows paid a few thousand times before the box even
     " decided it carries no message at all
-    DATA(lv_rap)   = abap_false.
-    DATA(lv_first) = abap_true.
-    LOOP AT it_tab ASSIGNING FIELD-SYMBOL(<row>).
+    DATA lv_rap LIKE abap_false.
+    DATA lv_first LIKE abap_true.
+    FIELD-SYMBOLS <row> TYPE ANY.
+        DATA lv_row_kind TYPE string.
+    lv_rap = abap_false.
+
+    lv_first = abap_true.
+
+    LOOP AT it_tab ASSIGNING <row>.
       IF lv_first = abap_true.
         lv_first = abap_false.
-        DATA(lv_row_kind) = rtti_get_type_kind( <row> ).
+
+        lv_row_kind = rtti_get_type_kind( <row> ).
         IF lv_row_kind = cl_abap_datadescr=>typekind_struct1
             OR lv_row_kind = cl_abap_datadescr=>typekind_struct2.
           lv_rap = check_is_rap_struct( <row> ).
