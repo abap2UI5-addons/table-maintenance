@@ -33,7 +33,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
         row_id TYPE string,
         key    TYPE string,
       END OF ty_s_keys.
-    TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
+    TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH DEFAULT KEY.
 
     DATA mv_table          TYPE string.
     DATA mt_dfies          TYPE z2ui5_cl_tm_context=>ty_t_dfies.
@@ -141,7 +141,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_txt.
 
-    DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
+    DATA texts TYPE z2ui5_cl_tm_context=>ty_s_data_element_text.
+    texts = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
     CASE type.
       WHEN 'L'.
@@ -168,6 +169,22 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <org>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_org> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <del_org> TYPE STANDARD TABLE.
+      DATA keys TYPE z2ui5_cl_tm_001=>ty_t_keys.
+      DATA keys_tmp TYPE z2ui5_cl_tm_001=>ty_t_keys.
+      DATA key_tmp LIKE LINE OF keys_tmp.
+        DATA temp1 LIKE sy-subrc.
+        DATA temp2 LIKE sy-subrc.
+      FIELD-SYMBOLS <line> TYPE ANY.
+        FIELD-SYMBOLS <id> TYPE any.
+        DATA temp3 LIKE sy-subrc.
+        DATA temp4 LIKE sy-subrc.
+      DATA comp TYPE abap_component_tab.
+          DATA struct_desc TYPE REF TO cl_abap_structdescr.
+          DATA table_desc TYPE REF TO cl_abap_tabledescr.
+          DATA ls_msg TYPE z2ui5_cl_tm_context=>ty_s_msg.
+          DATA temp5 LIKE sy-subrc.
+          DATA temp6 LIKE sy-subrc.
+          DATA lx_db TYPE REF TO cx_root.
 
     IF ms_transport IS INITIAL.
 
@@ -192,20 +209,36 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       CLEAR <del>.
 
       " Compare all Key entries with the TMP. All entries that are not present are deleted.
-      DATA(keys) = get_keys( <tab> ).
-      DATA(keys_tmp) = get_keys( <org> ).
 
-      LOOP AT keys_tmp INTO DATA(key_tmp).
-        IF line_exists(  keys[ key = key_tmp-key ] ).
+      keys = get_keys( <tab> ).
+
+      keys_tmp = get_keys( <org> ).
+
+
+      LOOP AT keys_tmp INTO key_tmp.
+
+
+        temp2 = sy-subrc.
+        READ TABLE keys WITH KEY key = key_tmp-key TRANSPORTING NO FIELDS.
+        temp1 = sy-subrc.
+        sy-subrc = temp2.
+        IF temp1 = 0.
           DELETE keys_tmp USING KEY loop_key.
         ENDIF.
       ENDLOOP.
 
-      LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line>).
-        FIELD-SYMBOLS <id> TYPE any.
+
+      LOOP AT <org> ASSIGNING <line>.
+
         UNASSIGN <id>.
         ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
-        IF line_exists(  keys_tmp[ row_id = <id> ] ).
+
+
+        temp4 = sy-subrc.
+        READ TABLE keys_tmp WITH KEY row_id = <id> TRANSPORTING NO FIELDS.
+        temp3 = sy-subrc.
+        sy-subrc = temp4.
+        IF temp3 = 0.
           APPEND <line> TO <del>.
         ENDIF.
       ENDLOOP.
@@ -221,13 +254,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
+
+      comp = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
       TRY.
 
-          DATA(struct_desc) = cl_abap_structdescr=>create( comp ).
 
-          DATA(table_desc) = cl_abap_tabledescr=>create( p_line_type  = struct_desc
+          struct_desc = cl_abap_structdescr=>create( comp ).
+
+
+          table_desc = cl_abap_tabledescr=>create( p_line_type  = struct_desc
                                                          p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
           CREATE DATA t_table     TYPE HANDLE table_desc.
@@ -257,7 +293,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         CATCH cx_root.
 
-          DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
+
+          ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
                                                         no = `316` ).
           " MESSAGE e316(42) into DATA(msg).  " Transport request error
           client->message_toast_display( ls_msg-text ).
@@ -271,14 +308,20 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " write after it failed
           IF <del> IS NOT INITIAL.
             " sy-subrc 4 only means a row was no longer in the database
-            DELETE (mv_table) FROM TABLE @<del_org>.
+            DELETE (mv_table) FROM TABLE <del_org>.
           ENDIF.
 
-          IF line_exists( mt_dfies[ keyflag = abap_false ] ).
-            MODIFY (mv_table) FROM TABLE @<tab_org>.
+
+
+          temp6 = sy-subrc.
+          READ TABLE mt_dfies WITH KEY keyflag = abap_false TRANSPORTING NO FIELDS.
+          temp5 = sy-subrc.
+          sy-subrc = temp6.
+          IF temp5 = 0.
+            MODIFY (mv_table) FROM TABLE <tab_org>.
           ELSE.
-            DELETE (mv_table) FROM TABLE @<tab_org>.
-            INSERT (mv_table) FROM TABLE @<tab_org>.
+            DELETE (mv_table) FROM TABLE <tab_org>.
+            INSERT (mv_table) FROM TABLE <tab_org>.
           ENDIF.
 
           IF sy-subrc = 0.
@@ -304,7 +347,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                          type = `error` ).
           ENDIF.
 
-        CATCH cx_root INTO DATA(lx_db).
+
+        CATCH cx_root INTO lx_db.
           " a failed write (a duplicate key on INSERT, a value the column
           " does not take) used to end here without a word, the rows
           " deleted just before still waiting in the LUW
@@ -322,22 +366,35 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD get_keys.
 
     FIELD-SYMBOLS <line> TYPE any.
+      FIELD-SYMBOLS <id> TYPE any.
+      DATA temp7 TYPE ty_s_keys.
+      DATA keys LIKE temp7.
+      DATA value TYPE string.
+      DATA dfies LIKE LINE OF mt_dfies.
+        FIELD-SYMBOLS <key> TYPE any.
 
     LOOP AT table ASSIGNING <line>.
 
-      FIELD-SYMBOLS <id> TYPE any.
+
       UNASSIGN <id>.
       ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
-      DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
-      DATA(value) = ``.
+
+      CLEAR temp7.
+      temp7-row_id = <id>.
+
+      keys = temp7.
+
+      value = ``.
 
       " the client is left out: the rows read are all of the logon client, a row
       " added in the popup has an empty one, and the database writes both to the
       " logon client - with it, an added row never matched the row it overwrites
-      LOOP AT mt_dfies INTO DATA(dfies) WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
 
-        ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO FIELD-SYMBOL(<key>).
+      LOOP AT mt_dfies INTO dfies WHERE keyflag = abap_true AND datatype <> 'CLNT' AND fieldname <> 'MANDT'.
+
+
+        ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <line> TO <key>.
 
         " each value with its length in front: plain concatenation made
         " A + BC and AB + C the same key and reported a duplicate that
@@ -363,6 +420,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <del>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_org> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <del_org> TYPE STANDARD TABLE.
+      DATA comp TYPE abap_component_tab.
+          DATA struct_desc TYPE REF TO cl_abap_structdescr.
+          DATA table_desc TYPE REF TO cl_abap_tabledescr.
+          DATA ls_msg TYPE z2ui5_cl_tm_context=>ty_s_msg.
 
     IF ms_transport IS INITIAL.
 
@@ -386,13 +447,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDIF.
       ASSIGN mt_table_del->* TO <del>.
 
-      DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
+
+      comp = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
       TRY.
 
-          DATA(struct_desc) = cl_abap_structdescr=>create( comp ).
 
-          DATA(table_desc) = cl_abap_tabledescr=>create( p_line_type  = struct_desc
+          struct_desc = cl_abap_structdescr=>create( comp ).
+
+
+          table_desc = cl_abap_tabledescr=>create( p_line_type  = struct_desc
                                                          p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
           CREATE DATA t_table     TYPE HANDLE table_desc.
@@ -419,7 +483,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                       is_transport = ms_transport ).
 
         CATCH cx_root.
-          DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
+
+          ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
                                                         no = `316` ).
 
           " MESSAGE e316(42) INTO DATA(msg).  " Transport request error
@@ -437,20 +502,54 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD get_comp.
     DATA id    TYPE c LENGTH 32.
     DATA selkz TYPE abap_bool.
+        DATA comp TYPE abap_component_tab.
+        DATA temp8 LIKE sy-subrc.
+        DATA temp3 TYPE xsdboolean.
+          DATA temp9 TYPE cl_abap_structdescr=>component_table.
+          DATA temp10 LIKE LINE OF temp9.
+          DATA temp1 TYPE REF TO cl_abap_datadescr.
+        DATA temp11 LIKE sy-subrc.
+        DATA temp4 TYPE xsdboolean.
+          DATA temp12 TYPE cl_abap_structdescr=>component_table.
+          DATA temp13 LIKE LINE OF temp12.
+          DATA temp2 TYPE REF TO cl_abap_datadescr.
 
     TRY.
 
-        DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
-        IF xsdbool( line_exists( comp[ name = mc_row_id ] ) ) = abap_false.
-          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
-                                    ( name = mc_row_id
-                                      type = CAST #( cl_abap_datadescr=>describe_by_data( id ) ) ) ) TO result.
+        comp = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
+
+
+        READ TABLE comp WITH KEY name = mc_row_id TRANSPORTING NO FIELDS.
+        temp8 = sy-subrc.
+
+        temp3 = boolc( temp8 = 0 ).
+        IF temp3 = abap_false.
+
+          CLEAR temp9.
+
+          temp10-name = mc_row_id.
+
+          temp1 ?= cl_abap_datadescr=>describe_by_data( id ).
+          temp10-type = temp1.
+          INSERT temp10 INTO TABLE temp9.
+          APPEND LINES OF temp9 TO result.
         ENDIF.
-        IF xsdbool( line_exists( comp[ name = 'SELKZ' ] ) ) = abap_false.
-          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
-                                    ( name = 'SELKZ'
-                                      type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) ) TO result.
+
+        READ TABLE comp WITH KEY name = 'SELKZ' TRANSPORTING NO FIELDS.
+        temp11 = sy-subrc.
+
+        temp4 = boolc( temp11 = 0 ).
+        IF temp4 = abap_false.
+
+          CLEAR temp12.
+
+          temp13-name = 'SELKZ'.
+
+          temp2 ?= cl_abap_datadescr=>describe_by_data( selkz ).
+          temp13-type = temp2.
+          INSERT temp13 INTO TABLE temp12.
+          APPEND LINES OF temp12 TO result.
 
         ENDIF.
 
@@ -463,12 +562,19 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD get_data.
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
 
-    DATA(t_comp) = get_comp( ).
+    DATA t_comp TYPE abap_component_tab.
+        DATA new_struct_desc TYPE REF TO cl_abap_structdescr.
+        DATA new_table_desc TYPE REF TO cl_abap_tabledescr.
+    FIELD-SYMBOLS <mt_table_tmp> TYPE data.
+    FIELD-SYMBOLS <mt_table_org> TYPE data.
+    t_comp = get_comp( ).
     TRY.
 
-        DATA(new_struct_desc) = cl_abap_structdescr=>create( t_comp ).
 
-        DATA(new_table_desc) = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
+        new_struct_desc = cl_abap_structdescr=>create( t_comp ).
+
+
+        new_table_desc = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA mt_table     TYPE HANDLE new_table_desc.
@@ -480,7 +586,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         SELECT *
           FROM (mv_table)
-          INTO CORRESPONDING FIELDS OF TABLE @<table>.
+          INTO CORRESPONDING FIELDS OF TABLE <table>.
 
         SORT <table>.
 
@@ -490,19 +596,25 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     set_row_id( ).
 
-    ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
-    ASSIGN mt_table_org->* TO FIELD-SYMBOL(<mt_table_org>).
+
+    ASSIGN mt_table_tmp->* TO <mt_table_tmp>.
+
+    ASSIGN mt_table_org->* TO <mt_table_org>.
 
     <mt_table_tmp> = <table>.  " For Filter etc.
     <mt_table_org> = <table>.  " For DB alignment bevore Save
   ENDMETHOD.
 
   METHOD get_dfies.
+    DATA temp14 LIKE LINE OF mt_dfies.
+    DATA dfies LIKE REF TO temp14.
 
     mt_dfies = z2ui5_cl_tm_context=>rtti_get_t_dfies_by_table_name( mv_table ).
 
     " Check if the DB for the F4 Help is released
-    LOOP AT mt_dfies REFERENCE INTO DATA(dfies) WHERE checktable IS NOT INITIAL.
+
+
+    LOOP AT mt_dfies REFERENCE INTO dfies WHERE checktable IS NOT INITIAL.
       TRY.
           " type_not_found is a classic exception - the functional call
           " form dumps on it instead of reaching the CATCH
@@ -540,18 +652,32 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_table_name.
+    DATA tab TYPE string.
+      DATA startup_params TYPE z2ui5_if_client=>ty_t_name_value.
+      DATA temp15 TYPE string.
+      DATA temp16 TYPE z2ui5_if_client=>ty_s_name_value.
+    DATA descr TYPE REF TO cl_abap_typedescr.
 
     IF mv_table IS NOT INITIAL.
       RETURN.
     ENDIF.
 
     " TABLE per Parameter?
-    DATA(tab) = z2ui5_cl_tm_context=>url_param_get( val = 'table'
+
+    tab = z2ui5_cl_tm_context=>url_param_get( val = 'table'
                                               url = client->get( )-s_config-search ).
 
     IF tab IS INITIAL.
-      DATA(startup_params) = client->get( )-t_comp_params.
-      tab = VALUE #( startup_params[ n = 'table' ]-v OPTIONAL ).
+
+      startup_params = client->get( )-t_comp_params.
+
+      CLEAR temp15.
+
+      READ TABLE startup_params INTO temp16 WITH KEY n = 'table'.
+      IF sy-subrc = 0.
+        temp15 = temp16-v.
+      ENDIF.
+      tab = temp15.
     ENDIF.
 
     " no fallback table: without the parameter the app asks for one
@@ -563,8 +689,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     " a name that is no table left get_data without a table to fill - a
     " short dump; the app asks for the table instead, as without the parameter
+
     cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = mv_table
-                                         RECEIVING  p_descr_ref    = DATA(descr)
+                                         RECEIVING  p_descr_ref    = descr
                                          EXCEPTIONS type_not_found = 1
                                                     OTHERS         = 2 ).
     IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
@@ -577,7 +704,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(page) = render_main_head( ).
+    DATA page TYPE REF TO z2ui5_cl_ui5_view_builder.
+    page = render_main_head( ).
 
     IF mv_multi_edit = abap_false.
 
@@ -595,9 +723,23 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD render_table.
 
-    ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
+    FIELD-SYMBOLS <tab> TYPE data.
+    DATA table TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA headder TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA columns TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp17 LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp17.
+      DATA lv_index LIKE sy-tabix.
+    DATA cells TYPE REF TO z2ui5_cl_ui5_view_builder.
+        DATA sub_col TYPE string.
+        DATA index TYPE i.
+        DATA subcol LIKE LINE OF layout->t_sub_col.
+          DATA line TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+            DATA column TYPE string.
+    ASSIGN mt_table->* TO <tab>.
 
-    DATA(table) = page->ele( `Table`
+
+    table = page->ele( `Table`
                       )->a( n = `growing` v = 'true'
                       )->a( n = `growingThreshold` v = '100'
                       )->a( n = `width` v = 'auto'
@@ -606,7 +748,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->a( n = `items` v = client->_bind_edit( <tab> )
                       )->a( n = `headerText` t = mv_table ).
 
-    DATA(headder) = table->ele( `headerToolbar`
+
+    headder = table->ele( `headerToolbar`
                         )->ele( `OverflowToolbar`
                         )->tag( `Title`
                         )->a( n = `text` t = mv_table
@@ -622,10 +765,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         )->a( n = `icon` v = 'sap-icon://action-settings'
         )->a( n = `press` v = client->_event( val = mo_layout->ms_layout-s_head-guid ) ).
 
-    DATA(columns) = table->ele( `columns` ).
 
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
-      DATA(lv_index) = sy-tabix.
+    columns = table->ele( `columns` ).
+
+
+
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
+
+      lv_index = sy-tabix.
 
       columns->ele( `Column`
           )->a( n = `visible` v = client->_bind( val       = layout->visible
@@ -642,7 +789,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ENDLOOP.
 
-    DATA(cells) = columns->end(
+
+    cells = columns->end(
                       )->ele( `items`
                       )->ele( `ColumnListItem`
                       )->a( n = `vAlign` v = 'Middle'
@@ -655,17 +803,22 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       IF layout->t_sub_col IS NOT INITIAL.
 
-        DATA(sub_col) = ``.
-        DATA(index) = 0.
 
-        LOOP AT layout->t_sub_col INTO DATA(subcol).
+        sub_col = ``.
+
+        index = 0.
+
+
+        LOOP AT layout->t_sub_col INTO subcol.
 
           index = index + 1.
 
-          READ TABLE mo_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
+
+          READ TABLE mo_layout->ms_layout-t_layout INTO line WITH KEY fname = subcol-fname.
 
           IF line-reference_field IS INITIAL.
-            DATA(column) = |{ line-tlabel }: \{{ subcol-fname }\}|.
+
+            column = |{ line-tlabel }: \{{ subcol-fname }\}|.
           ELSE.
             column = |{ line-tlabel }: \{{ subcol-fname }\} \{{ line-reference_field }\}|.
           ENDIF.
@@ -700,9 +853,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_main_head.
+      DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+        DATA temp18 TYPE string_table.
     IF mo_parent_view IS INITIAL.
 
-      DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+
+      view = z2ui5_cl_ui5_view_builder=>factory(
                        )->ele( n = `View` ns = `mvc`
                        )->a( n = `xmlns` v = `sap.m`
                        )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
@@ -717,9 +873,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                      )->a( n = `showHeader` b = abap_false ).
         " inside the launchpad the shell header carries the title, set once
         " the response has been rendered
+
+        CLEAR temp18.
+        INSERT mv_table INTO TABLE temp18.
         client->follow_up_action(
             val   = z2ui5_if_client=>cs_event-set_title_launchpad
-            t_arg = VALUE #( ( mv_table ) ) ).
+            t_arg = temp18 ).
 
       ELSE.
         result = view->ele( `Page`
@@ -744,7 +903,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_main_footer.
-    DATA(footer) = page->ele( `footer`
+    DATA footer TYPE REF TO z2ui5_cl_ui5_view_builder.
+    footer = page->ele( `footer`
                        )->ele( `OverflowToolbar`
                        )->tag( `ToolbarSpacer` ).
 
@@ -806,8 +966,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD row_select.
 
-    DATA(lt_arg) = client->get( )-t_event_arg.
-    READ TABLE lt_arg INTO DATA(ls_arg) INDEX 1.
+    DATA lt_arg TYPE string_table.
+    DATA ls_arg TYPE string.
+    lt_arg = client->get( )-t_event_arg.
+
+    READ TABLE lt_arg INTO ls_arg INDEX 1.
 
     IF sy-subrc <> 0.
       RETURN.
@@ -825,6 +988,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD search.
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <f_row> TYPE ANY.
+      DATA lv_row TYPE string.
+      DATA lv_index TYPE i.
+        FIELD-SYMBOLS <field> TYPE any.
 
     ASSIGN mt_table->* TO <tab>.
     ASSIGN mt_table_tmp->* TO <tab_tmp>.
@@ -837,11 +1004,15 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<f_row>).
-      DATA(lv_row) = ``.
-      DATA(lv_index) = 1.
+
+    LOOP AT <tab> ASSIGNING <f_row>.
+
+      lv_row = ``.
+
+      lv_index = 1.
       DO.
-        ASSIGN COMPONENT lv_index OF STRUCTURE <f_row> TO FIELD-SYMBOL(<field>).
+
+        ASSIGN COMPONENT lv_index OF STRUCTURE <f_row> TO <field>.
         IF sy-subrc <> 0.
           EXIT.
         ENDIF.
@@ -859,12 +1030,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab>  TYPE STANDARD TABLE.
     FIELD-SYMBOLS <line> TYPE any.
+      FIELD-SYMBOLS <row> TYPE any.
 
     ASSIGN mt_table->* TO <tab>.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      FIELD-SYMBOLS <row> TYPE any.
+
       UNASSIGN <row>.
       ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
@@ -912,6 +1084,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_main.
+        DATA temp5 TYPE xsdboolean.
+        FIELD-SYMBOLS <temp20> TYPE xsdboolean.
+        FIELD-SYMBOLS <temp1> LIKE LINE OF mo_layout->ms_layout-t_layout.
+        DATA temp2 LIKE sy-tabix.
+DATA selkz LIKE REF TO <temp20>.
+        DATA temp6 TYPE xsdboolean.
+          FIELD-SYMBOLS <tab_edit> TYPE data.
+          FIELD-SYMBOLS <tab_edit_tmp> TYPE data.
     CASE client->get( )-event.
 
       WHEN 'BACK'.
@@ -947,9 +1127,27 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_EDIT'.
 
-        mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
-        DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
-        selkz->* = xsdbool( mv_multi_edit = abap_true ).
+
+        temp5 = boolc( mv_multi_edit = abap_false ).
+        mv_multi_edit = temp5.
+
+
+
+        temp2 = sy-tabix.
+        READ TABLE mo_layout->ms_layout-t_layout WITH KEY fname = 'SELKZ' ASSIGNING <temp1>.
+        sy-tabix = temp2.
+        IF sy-subrc <> 0.
+          ASSERT 1 = 0.
+        ENDIF.
+        ASSIGN <temp1>-visible TO <temp20>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp20> INTO selkz.
+
+        temp6 = boolc( mv_multi_edit = abap_true ).
+        selkz->* = temp6.
 
         IF mv_multi_edit = abap_true.
           CLEAR mv_search_value.
@@ -957,8 +1155,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ELSE.
           " multi-edit changes mt_table only; normal mode saves and searches
           " from mt_table_tmp, which would drop those changes
-          ASSIGN mt_table->* TO FIELD-SYMBOL(<tab_edit>).
-          ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<tab_edit_tmp>).
+
+          ASSIGN mt_table->* TO <tab_edit>.
+
+          ASSIGN mt_table_tmp->* TO <tab_edit_tmp>.
           <tab_edit_tmp> = <tab_edit>.
         ENDIF.
 
@@ -991,6 +1191,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_after_layout.
+        DATA temp21 TYPE REF TO z2ui5_cl_layo_pop.
+        DATA app LIKE temp21.
 
     " Kommen wir aus einer anderen APP
     IF client->get( )-check_on_navigated = abap_false.
@@ -999,7 +1201,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+
+        temp21 ?= client->get_app( client->get( )-s_draft-id_prev_app ).
+
+        app = temp21.
 
         mo_layout = app->mo_layout.
 
@@ -1018,11 +1223,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_layout.
 
-    DATA(class) = cl_abap_classdescr=>get_class_name( me ).
+    DATA class TYPE abap_abstypename.
+      DATA control LIKE z2ui5_cl_layo_manager=>m_table.
+    class = cl_abap_classdescr=>get_class_name( me ).
     SHIFT class LEFT DELETING LEADING '\CLASS='.
 
     IF mv_multi_edit = abap_false.
-      DATA(control) = z2ui5_cl_layo_manager=>m_table.
+
+      control = z2ui5_cl_layo_manager=>m_table.
     ELSE.
       control = z2ui5_cl_layo_manager=>ui_table.
     ENDIF.
@@ -1036,6 +1244,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_after_transport.
+        DATA temp22 TYPE REF TO z2ui5_cl_popup_show_tr.
+        DATA app LIKE temp22.
     " Kommen wir aus einer anderen APP
     IF client->get( )-check_on_navigated = abap_false.
       RETURN.
@@ -1043,7 +1253,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     TRY.
         " War es das Layout?
-        DATA(app) = CAST z2ui5_cl_popup_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+
+        temp22 ?= client->get_app( client->get( )-s_draft-id_prev_app ).
+
+        app = temp22.
 
         ms_transport = app->ms_transport.
 
@@ -1088,12 +1301,40 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD render_ui_table.
 
     " Set Selkz active!
-    DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
+    FIELD-SYMBOLS <temp23> TYPE xsdboolean.
+    FIELD-SYMBOLS <temp3> LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA temp4 LIKE sy-tabix.
+DATA selkz LIKE REF TO <temp23>.
+    FIELD-SYMBOLS <tab> TYPE data.
+    DATA table TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA toolbar TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA columns TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp24 LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp24.
+      DATA lv_index LIKE sy-tabix.
+      DATA temp25 TYPE string.
+      DATA temp3 TYPE string.
+      DATA temp5 TYPE string.
+      DATA col TYPE REF TO z2ui5_cl_ui5_view_builder.
+    temp4 = sy-tabix.
+    READ TABLE mo_layout->ms_layout-t_layout WITH KEY fname = 'SELKZ' ASSIGNING <temp3>.
+    sy-tabix = temp4.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    ASSIGN <temp3>-visible TO <temp23>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp23> INTO selkz.
     selkz->* = abap_true.
 
-    ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
 
-    DATA(table) = page->ele( `FlexBox`
+    ASSIGN mt_table->* TO <tab>.
+
+
+    table = page->ele( `FlexBox`
                       )->a( n = `height` v = '85vh'
                       )->ele( n = `Table` ns = `table`
                       )->a( n = `alternateRowColors` v = 'true'
@@ -1102,7 +1343,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->a( n = `selectionBehavior` v = 'RowSelector'
                       )->a( n = `rows` v = client->_bind_edit( <tab> ) ).
 
-    DATA(toolbar) = table->ele( n = `extension` ns = `table`
+
+    toolbar = table->ele( n = `extension` ns = `table`
                         )->ele( `OverflowToolbar`
                         )->tag( `ToolbarSpacer` ).
 
@@ -1110,21 +1352,33 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                client = client
                                                layout = mo_layout ).
 
-    DATA(columns) = table->ele( n = `columns` ns = `table` ).
 
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
-      DATA(lv_index) = sy-tabix.
+    columns = table->ele( n = `columns` ns = `table` ).
 
-      DATA(col) = columns->ele( n = `Column` ns = `table`
+
+
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
+
+      lv_index = sy-tabix.
+
+
+      temp25 = layout->fname.
+
+      temp3 = layout->fname.
+
+      IF layout->width IS NOT INITIAL.
+        temp5 = client->_bind( val = layout->width tab = mo_layout->ms_layout-t_layout tab_index = lv_index ).
+      ELSE.
+        CLEAR temp5.
+      ENDIF.
+
+      col = columns->ele( n = `Column` ns = `table`
                       )->a( n = `visible` v = client->_bind( val       = layout->visible
                                                       tab       = mo_layout->ms_layout-t_layout
                                                       tab_index = lv_index )
-                      )->a( n = `width` v = COND #( WHEN layout->width IS NOT INITIAL
-                                               THEN client->_bind( val       = layout->width
-                                                                   tab       = mo_layout->ms_layout-t_layout
-                                                                   tab_index = lv_index ) )
-                      )->a( n = `sortProperty` v = CONV string( layout->fname )
-                      )->a( n = `filterProperty` v = CONV string( layout->fname )
+                      )->a( n = `width` v = temp5
+                      )->a( n = `sortProperty` v = temp25
+                      )->a( n = `filterProperty` v = temp3
                       )->tag( `Text`
                       )->a( n = `text` v = layout->tlabel
                       )->ele( n = `template` ns = `table` ).
@@ -1149,13 +1403,19 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <line> TYPE ANY.
+      FIELD-SYMBOLS <selkz> TYPE any.
+      FIELD-SYMBOLS <id> TYPE any.
+      FIELD-SYMBOLS <line_tmp> TYPE ANY.
+        FIELD-SYMBOLS <id_tmp> TYPE any.
 
     ASSIGN mt_table->* TO <tab>.
     ASSIGN mt_table_tmp->* TO <tab_tmp>.
 
-    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      FIELD-SYMBOLS <selkz> TYPE any.
+    LOOP AT <tab> ASSIGNING <line>.
+
+
       UNASSIGN <selkz>.
       ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO <selkz>.
 
@@ -1166,7 +1426,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      FIELD-SYMBOLS <id> TYPE any.
+
       UNASSIGN <id>.
       ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
@@ -1175,9 +1435,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDIF.
 
       " We need to delete this in the tmp table aslwell ..
-      LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
 
-        FIELD-SYMBOLS <id_tmp> TYPE any.
+      LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
+
+
         UNASSIGN <id_tmp>.
         ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <id_tmp>.
 
@@ -1202,16 +1463,23 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD check_input.
+    FIELD-SYMBOLS <mt_table_tmp> TYPE data.
+    FIELD-SYMBOLS <mt_table> TYPE data.
+      DATA temp7 TYPE xsdboolean.
 
     CLEAR mv_key_error.
 
-    ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
-    ASSIGN mt_table->* TO FIELD-SYMBOL(<mt_table>).
+
+    ASSIGN mt_table_tmp->* TO <mt_table_tmp>.
+
+    ASSIGN mt_table->* TO <mt_table>.
 
     " stays set once set: copies and deletions in multi-edit reach both
     " tables, so an equal comparison does not mean nothing is left to save
     IF mv_change_active = abap_false.
-      mv_change_active = xsdbool( <mt_table_tmp> <> <mt_table> ).
+
+      temp7 = boolc( <mt_table_tmp> <> <mt_table> ).
+      mv_change_active = temp7.
     ENDIF.
 
     view_model_update( ).
@@ -1224,13 +1492,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <copy>    TYPE any.
     FIELD-SYMBOLS <copy_id> TYPE any.
+    FIELD-SYMBOLS <line> TYPE ANY.
+      FIELD-SYMBOLS <selkz> TYPE any.
 
     ASSIGN mt_table->* TO <tab>.
     ASSIGN mt_table_tmp->* TO <tab_tmp>.
 
-    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      FIELD-SYMBOLS <selkz> TYPE any.
+    LOOP AT <tab> ASSIGNING <line>.
+
+
       UNASSIGN <selkz>.
       ASSIGN COMPONENT 'SELKZ' OF STRUCTURE <line> TO <selkz>.
 
@@ -1279,6 +1550,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <tab>         TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_changed> TYPE STANDARD TABLE.
+        DATA temp26 TYPE REF TO z2ui5_cl_tm_pop.
+        DATA app LIKE temp26.
+        FIELD-SYMBOLS <app_tab> TYPE data.
+          FIELD-SYMBOLS <line> TYPE ANY.
+            FIELD-SYMBOLS <row> TYPE any.
+            DATA found LIKE abap_false.
+            FIELD-SYMBOLS <line_changed> TYPE ANY.
+              FIELD-SYMBOLS <row_changed> TYPE any.
+              FIELD-SYMBOLS <line_tmp> TYPE ANY.
+                FIELD-SYMBOLS <row_tmp> TYPE any.
 
     " Kommen wir aus einer anderen APP
     IF client->get( )-check_on_navigated = abap_false.
@@ -1286,10 +1567,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ENDIF.
 
     TRY.
-        DATA(app) = CAST z2ui5_cl_tm_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+
+        temp26 ?= client->get_app( client->get( )-s_draft-id_prev_app ).
+
+        app = temp26.
 
         ASSIGN mt_table->* TO <tab>.
-        ASSIGN app->mt_data->* TO FIELD-SYMBOL(<app_tab>).
+
+        ASSIGN app->mt_data->* TO <app_tab>.
 
         IF <app_tab> <> <tab>.
           mv_change_active = abap_true.
@@ -1298,20 +1583,23 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           ASSIGN app->mt_data->* TO <tab_changed>.
 
           " Check for deleted lines
-          LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-            FIELD-SYMBOLS <row> TYPE any.
+          LOOP AT <tab> ASSIGNING <line>.
+
+
             UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
 
-            DATA(found) = abap_false.
 
-            LOOP AT <tab_changed> ASSIGNING FIELD-SYMBOL(<line_changed>).
+            found = abap_false.
 
-              FIELD-SYMBOLS <row_changed> TYPE any.
+
+            LOOP AT <tab_changed> ASSIGNING <line_changed>.
+
+
               UNASSIGN <row_changed>.
               ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
               IF <row_changed> IS NOT ASSIGNED.
@@ -1328,9 +1616,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             IF found = abap_false.
               " append <row> to t_delete
 
-              LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
 
-                FIELD-SYMBOLS <row_tmp> TYPE any.
+              LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
+
+
                 UNASSIGN <row_tmp>.
                 ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
                 IF <row_tmp> IS NOT ASSIGNED.
@@ -1423,17 +1712,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_table_input.
+      DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+      DATA page TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     IF mo_parent_view IS INITIAL.
 
-      DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+
+      view = z2ui5_cl_ui5_view_builder=>factory(
                        )->ele( n = `View` ns = `mvc`
                        )->a( n = `xmlns` v = `sap.m`
                        )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
                        )->a( n = `displayBlock` v = `true`
                        )->a( n = `height` v = `100%` ).
 
-      DATA(page) = view->ele( `Page`
+
+      page = view->ele( `Page`
                        )->a( n = `title` v = `Table Maintenance` ).
 
     ELSE.
@@ -1470,17 +1763,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_table_input.
+      DATA table TYPE string.
+      DATA descr TYPE REF TO cl_abap_typedescr.
 
     IF client->get( )-event = `TABLE_OPEN`.
 
-      DATA(table) = to_upper( condense( mv_table_input ) ).
+
+      table = to_upper( condense( mv_table_input ) ).
       IF table IS INITIAL.
         client->message_toast_display( `Enter a table name.` ).
         RETURN.
       ENDIF.
 
+
       cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table
-                                           RECEIVING  p_descr_ref    = DATA(descr)
+                                           RECEIVING  p_descr_ref    = descr
                                            EXCEPTIONS type_not_found = 1
                                                       OTHERS         = 2 ).
       IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
