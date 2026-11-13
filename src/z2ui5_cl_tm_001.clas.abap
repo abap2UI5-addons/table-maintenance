@@ -377,7 +377,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       CLEAR mv_ucomm_tmp.
 
-      ASSIGN mt_table->* TO <tab>.
+      " outside multi-edit a search leaves only its hits in mt_table - all
+      " rows are in mt_table_tmp, which is what the save writes as well
+      IF mv_multi_edit = abap_true.
+        ASSIGN mt_table->* TO <tab>.
+      ELSE.
+        ASSIGN mt_table_tmp->* TO <tab>.
+      ENDIF.
       ASSIGN mt_table_del->* TO <del>.
 
       DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
