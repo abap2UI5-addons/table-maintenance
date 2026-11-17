@@ -115,6 +115,14 @@ carries no authorization check of its own. Before using it beyond a
 development system, add your own authorization checks and restrict who may
 run the app.
 
+**That is a deliberate decision, not an open item.** abap2UI5 itself has no
+central authorization hook either: the framework leaves the check to the app,
+and this addon leaves it to the installation. Which check is the right one -
+`S_TABU_NAM`, `S_TABU_DIS`, an authorization object of your own, or what ABAP
+Cloud releases - depends on the system the addon runs in, so none is built in
+and none is planned. Whoever opens the app to more people than its developers
+adds the check that fits their system.
+
 ## Development
 
 ```bash
