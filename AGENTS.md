@@ -49,10 +49,19 @@ not referenced.
 - [layout-management](https://github.com/abap2UI5-addons/layout-management) — variant-managed table and form layouts
 - [popups](https://github.com/abap2UI5-addons/popups) — value help and search help
 
-There is no version pin on any of them — abaplint resolves each from its `main`
-branch. That is why the check workflows also run on a weekly schedule: a rename
-upstream breaks this repository silently, and with no pull request open nothing
-else would notice.
+layout-management and popups are pinned: `.github/deps.json` names the commit
+of each, and CI (the shared CI template of abap2UI5-addons, reusable workflows
+in [rap-ext](https://github.com/abap2UI5-addons/rap-ext/blob/main/.github/ci/README.md))
+resolves them there - in every abaplint config and in the rename.
+`bump-deps` moves the pins monthly, in its one pull request; the weekly run of
+`ci` checks their `main` tips, so an upstream rename is still noticed while no
+pull request is open. A local `npm run check` clones their `main`. The 702
+config gives popups a folder of its own (`/popups-702`): the template fills
+`/popups` beside it with the pinned commit.
+
+CI: `ci` (abaplint Standard and Cloud, the abap2UI5-linter, the rename check -
+one job each), `ci-702` (writes and lints the downported branch `702`),
+`build-rename`, `deploy-pages`, `bump-deps` - each a call of the template.
 
 ## Build and verify
 
@@ -102,7 +111,7 @@ nothing built with it.
 
 ## Namespace rename
 
-`npm run rename` (CI: `check-rename`) and the manual `build-rename` workflow
+`npm run rename` (CI: the `rename` job of `ci`) and the manual `build-rename` workflow
 are abap2UI5's namespace rename for this addon - `.github/scripts/rename.mjs`,
 the same file in every addon that has one. Every `z2ui5_` object becomes
 `<name>_...`, for a customer name such as `ZMYUI5` or a registered namespace
