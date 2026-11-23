@@ -206,7 +206,6 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
       mo_app->mv_view_display = abap_false.
       client->view_display( page->stringify( ) ).
     ENDIF.
-    mo_app->mv_view_model_update = abap_false.
 
   ENDMETHOD.
 

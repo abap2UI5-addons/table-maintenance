@@ -226,7 +226,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       IF dfies->checktable IS NOT INITIAL.
 
         simple_form->tag( `Input`
-            )->a( n = `value` v = client->_bind_edit( <val> )
+            )->a( n = `value` v = client->_bind( <val> )
             )->a( n = `showValueHelp` b = abap_true
             )->a( n = `enabled` b = enabled
             )->a( n = `type` v = type
@@ -237,7 +237,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       ELSEIF dfies->mac IS NOT INITIAL.
 
         simple_form->tag( `Input`
-            )->a( n = `value` v = client->_bind_edit( <val> )
+            )->a( n = `value` v = client->_bind( <val> )
             )->a( n = `showValueHelp` b = abap_true
             )->a( n = `enabled` b = enabled
             )->a( n = `type` v = type
@@ -249,7 +249,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         simple_form->ele( `ComboBox`
             )->a( n = `enabled` b = enabled
-            )->a( n = `selectedKey` v = client->_bind_edit( <val> )
+            )->a( n = `selectedKey` v = client->_bind( <val> )
             )->a( n = `items` v = client->_bind( <struc> )
             )->tag( n = `Item` ns = `core`
             )->a( n = `key` v = '{LOW}'
@@ -261,17 +261,17 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
           WHEN 'D'.
 
             simple_form->tag( `DatePicker`
-                )->a( n = `value` v = client->_bind_edit( <val> ) ).
+                )->a( n = `value` v = client->_bind( <val> ) ).
 
           WHEN 'T'.
 
             simple_form->tag( `TimePicker`
-                )->a( n = `value` v = client->_bind_edit( <val> ) ).
+                )->a( n = `value` v = client->_bind( <val> ) ).
 
           WHEN OTHERS.
 
             simple_form->tag( `Input`
-                )->a( n = `value` v = client->_bind_edit( <val> )
+                )->a( n = `value` v = client->_bind( <val> )
                 )->a( n = `showValueHelp` b = abap_false
                 )->a( n = `enabled` b = enabled
                 )->a( n = `type` v = type

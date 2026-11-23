@@ -10,16 +10,20 @@
     },
     {
       "url": "https://github.com/abap2UI5-addons/layout-management",
+      // branch DEV of this repository runs on the DEV branches of abap2UI5 and the addons
+      "branch": "DEV",
       "folder": "/abap2UI5-layout",
       "files": "/src/**/*.*"
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
+      "branch": "DEV",
       "folder": "/abap2UI5",
-      "files": "/src/**/*.*"
+      "files": "/src/0[0-2]/**/*.*"
     },
     {
       "url": "https://github.com/abap2UI5-addons/popups",
+      "branch": "DEV",
       "folder": "/popups",
       "files": "/src/**/*.*"
     }

@@ -3,8 +3,6 @@ INTERFACE z2ui5_if_tm_001
 
   " Rerendering needed
   DATA mv_view_display      TYPE abap_bool.
-  " Model Update needed
-  DATA mv_view_model_update TYPE abap_bool.
   " View from a view cluster: the element this app renders INTO - normally the
   " sap.m.Page. It used to be the whole view, which the app then searched for a
   " `Page`; the generic view builder cannot look an element up by name, so an

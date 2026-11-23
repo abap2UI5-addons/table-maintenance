@@ -8,7 +8,6 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     ALIASES mo_parent_view       FOR z2ui5_if_tm_001~mo_parent_view.
     ALIASES mv_view_display      FOR z2ui5_if_tm_001~mv_view_display.
-    ALIASES mv_view_model_update FOR z2ui5_if_tm_001~mv_view_model_update.
     ALIASES mv_change_active     FOR z2ui5_if_tm_001~mv_change_active.
     ALIASES set_main_app_data    FOR z2ui5_if_tm_001~set_app_data.
     ALIASES ms_transport         FOR z2ui5_if_tm_001~ms_transport.
@@ -129,7 +128,6 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     METHODS check_input.
 
     METHODS button_copy.
-    METHODS view_model_update.
     METHODS on_after_popup.
 
   PRIVATE SECTION.
@@ -318,7 +316,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ENDIF.
 
-    view_model_update( ).
 
   ENDMETHOD.
 
@@ -606,7 +603,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->a( n = `width` v = 'auto'
                       )->a( n = `sticky` v = `ColumnHeaders`
                       )->a( n = `autoPopinMode` b = abap_true
-                      )->a( n = `items` v = client->_bind_edit( <tab> )
+                      )->a( n = `items` v = client->_bind( <tab> )
                       )->a( n = `headerText` t = mv_table ).
 
     DATA(headder) = table->ele( `headerToolbar`
@@ -615,7 +612,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                         )->a( n = `text` t = mv_table
                         )->tag( `ToolbarSpacer`
                         )->tag( `SearchField`
-                        )->a( n = `value` v = client->_bind_edit( mv_search_value )
+                        )->a( n = `value` v = client->_bind( mv_search_value )
                         )->a( n = `search` v = client->_event( 'BUTTON_SEARCH' )
                         )->a( n = `change` v = client->_event( 'BUTTON_SEARCH' )
                         )->a( n = `id` v = `SEARCH`
@@ -683,7 +680,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         IF layout->reference_field IS NOT INITIAL.
           cells->ele( `ObjectIdentifier`
               )->a( n = `title` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}|
-              " abap2ui5lint-disable-next-line unescaped-text-in-attribute -- sub_col is a composite binding ({FIELD} per sub column), not literal text
               )->a( n = `text` v = sub_col ).
         ELSE.
           cells->ele( `ObjectIdentifier`
@@ -924,12 +920,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       WHEN 'BUTTON_REFRESH'.
 
         get_data( ).
-        view_model_update( ).
 
       WHEN 'BUTTON_SEARCH'.
 
         search( ).
-        view_model_update( ).
 
       WHEN 'BUTTON_SAVE'.
 
@@ -1009,10 +1003,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         IF app->mv_rerender = abap_true.
           " subcolumns need rerendering to work ..
           render_main( ).
-        ELSE.
-
-          view_model_update( ).
-
         ENDIF.
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
@@ -1066,7 +1056,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         ENDIF.
 
-        view_model_update( ).
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
@@ -1103,7 +1092,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                       )->a( n = `visibleRowCountMode` v = 'Auto'
                       )->a( n = `selectionMode` v = 'None'
                       )->a( n = `selectionBehavior` v = 'RowSelector'
-                      )->a( n = `rows` v = client->_bind_edit( <tab> ) ).
+                      )->a( n = `rows` v = client->_bind( <tab> ) ).
 
     DATA(toolbar) = table->ele( n = `extension` ns = `table`
                         )->ele( `OverflowToolbar`
@@ -1195,7 +1184,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       DELETE <tab>.
 
-      view_model_update( ).
       mv_change_active = abap_true.
 
       UNASSIGN <selkz>.
@@ -1217,7 +1205,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       mv_change_active = xsdbool( <mt_table_tmp> <> <mt_table> ).
     ENDIF.
 
-    view_model_update( ).
 
   ENDMETHOD.
 
@@ -1259,7 +1246,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         mv_change_active = abap_true.
 
-        view_model_update( ).
 
       ENDIF.
 
@@ -1267,15 +1253,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD view_model_update.
-
-    IF mo_parent_view IS INITIAL.
-      client->view_model_update( ).
-    ELSE.
-      mv_view_model_update = abap_true.
-    ENDIF.
-
-  ENDMETHOD.
 
   METHOD on_after_popup.
 
@@ -1418,7 +1395,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         ENDIF.
 
-        view_model_update( ).
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
