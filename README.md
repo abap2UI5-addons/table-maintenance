@@ -34,8 +34,11 @@ Good for:
 
 - **Customizing and Z tables** that need a quick maintenance screen.
 - **ABAP Cloud systems** without SM30.
-- **Embedding** - a view cluster can render the app into its own page through
-  the interface `z2ui5_if_tm_001`.
+- **Several tables on one page** - the view cluster `z2ui5_cl_tm_002` shows a
+  tab per table and the maintenance of the selected one below it, with one
+  transport request for all of them.
+- **Embedding** - an app of your own can render the maintenance into its page
+  through the interface `z2ui5_if_tm_001`, the way `z2ui5_cl_tm_002` does.
 
 To only look into a table, without changing it, use
 [abap2UI5-addons/se16n](https://github.com/abap2UI5-addons/se16n).
@@ -72,6 +75,14 @@ URL parameter `table`:
 Without the parameter (and without a launchpad startup parameter `table`) the
 app opens no table; it asks for the table name first.
 
+For **several tables on one page**, start the view cluster `z2ui5_cl_tm_002`
+with a comma-separated list of tables and an optional page title - as URL
+parameters or launchpad startup parameters of the same names:
+
+```
+?app_start=z2ui5_cl_tm_002&tables=<TABLE_1>,<TABLE_2>&title=<TITLE>
+```
+
 ### Parallel installation (namespace rename)
 
 To run a second copy next to the original in the same system, rename it the
@@ -105,6 +116,12 @@ of the installation with the same name.
 * Value help from check tables, fixed values and search helps
 * Column layouts saved as variants (layout-management)
 * Changes recorded on a transport request
+* Several tables on one page (`z2ui5_cl_tm_002`): a tab per table with its
+  number of entries, one transport request handed on from table to table, and
+  a confirmation before a tab change would discard unsaved changes
+* After saving, the table buffer of a buffered table is reset
+  (`SBUF_GENERIC_RESET`), so the change shows at once - Standard ABAP only,
+  ABAP Cloud has no table buffer reset
 
 ## Security
 

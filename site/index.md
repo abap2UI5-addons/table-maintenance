@@ -24,7 +24,8 @@ features:
   - title: "Add, copy and delete entries, multi-edit mode for several rows"
   - title: "Record changes on a transport request"
   - title: "Search field and column layouts via layout-management"
-  - title: "Embeddable into a view cluster through the interface z2ui5_if_tm_001"
+  - title: "Several tables on one page: the view cluster z2ui5_cl_tm_002, one transport for all"
+  - title: "Embeddable into an app of your own through the interface z2ui5_if_tm_001"
 ---
 
 ## What it does
@@ -45,6 +46,7 @@ With [abapGit](https://abapgit.org), from [the repository](https://github.com/ab
 
 - Install with abapGit in this order: abap2UI5, abap2UI5-addons/popups, abap2UI5-addons/layout-management, then this repository (branch main)
 - Start with ?app_start=z2ui5_cl_tm_001&table=<TABLE_NAME>; without the parameter the app asks for the table name first
+- For several tables on one page start the view cluster: ?app_start=z2ui5_cl_tm_002&tables=<TABLE_1>,<TABLE_2>&title=<TITLE>
 - The app carries no authorization check of its own; add your own before using it beyond a development system
 
 The [Guide](/guide) has every step.

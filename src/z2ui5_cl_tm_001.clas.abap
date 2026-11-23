@@ -283,6 +283,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
           IF sy-subrc = 0.
             COMMIT WORK AND WAIT.
+            " a buffered table would show the old entries until the next
+            " buffer synchronisation - here, in the app, after a refresh
+            z2ui5_cl_tm_context=>db_reset_table_buffer( mv_table ).
 
             " what was saved is the database state the next save compares
             " against - with the state of the first read, a row added, saved,
