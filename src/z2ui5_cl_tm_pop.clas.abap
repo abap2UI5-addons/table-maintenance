@@ -13,15 +13,30 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     " the popup returned; after a cancel it is the table as it came in
     DATA mt_data     TYPE REF TO data.
 
+    "! The popup for one row of a table - edit, add, copy, delete, display.
+    "! Read the table back from mt_data once the popup returned (the caller's
+    "! on navigated); after a cancel it is io_table as it came in.
+    "! @parameter io_table     | the rows - a standard table with a component
+    "!                           ROW_ID (z2ui5_cl_tm_001=>mc_row_id)
+    "! @parameter iv_row_id    | ROW_ID of the row to edit; empty: add a row
+    "! @parameter it_dfies     | the fields shown, in this order - leave out
+    "!                           what is not to be shown
+    "! @parameter is_layout    | the layout whose labels the fields take (the
+    "!                           data element of a field without one there)
+    "! @parameter iv_edit_mode | abap_true: edit iv_row_id, keys not editable
+    "! @parameter iv_copy_mode | offer Copy in edit mode (default abap_true)
+    "! @parameter iv_tabname   | the table for the value helps
+    "! @parameter iv_read_only | display only: every input disabled, only Close
     CLASS-METHODS factory
       IMPORTING
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_tm_context=>ty_t_dfies
-        is_layout     TYPE REF TO z2ui5_cl_layo_manager
+        is_layout     TYPE REF TO z2ui5_cl_layo_manager OPTIONAL
         iv_edit_mode  TYPE abap_bool
         iv_copy_mode  TYPE abap_bool OPTIONAL
         iv_tabname    TYPE string
+        iv_read_only  TYPE abap_bool DEFAULT abap_false
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_tm_pop.
 
@@ -31,6 +46,7 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_init      TYPE abap_bool.
     DATA mv_edit      TYPE abap_bool.
     DATA mv_copy      TYPE abap_bool.
+    DATA mv_read_only TYPE abap_bool.
 
     DATA mv_row_id    TYPE string.
     " rows of the caller's table - before a cancel this popup has only
@@ -62,6 +78,20 @@ CLASS z2ui5_cl_tm_pop DEFINITION
         VALUE(result) TYPE string.
 
     METHODS get_fixval.
+
+    "! The label of a field: the long text of the data element the layout
+    "! names for it (or the field's own), else the DDIC field texts, else the
+    "! field name - a popup opened by another app may come without a layout
+    METHODS get_label
+      IMPORTING
+        dfies         TYPE z2ui5_cl_tm_context=>ty_s_dfies
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! The buttons at the bottom - Close always, the others by mode
+    METHODS render_popup_buttons
+      IMPORTING
+        dialog TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     METHODS get_input_type
       IMPORTING
@@ -194,7 +224,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                       )->a( n = `xmlns:core` v = `sap.ui.core`
                       )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
-    DATA(title) = COND #( WHEN mv_edit = abap_true THEN get_txt( 'CRMST_UIU_EDIT' ) ELSE get_txt( 'RSLPO_GUI_ADDPART' ) ).
+    DATA(title) = COND #( WHEN mv_read_only = abap_true THEN `Display`
+                          WHEN mv_edit = abap_true THEN get_txt( 'CRMST_UIU_EDIT' )
+                          ELSE get_txt( 'RSLPO_GUI_ADDPART' ) ).
 
     DATA(dialog) = popup->ele( `Dialog`
                           )->a( n = `title` t = title
@@ -211,7 +243,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       DATA(enabled) = xsdbool( NOT ( dfies->keyflag = abap_true AND mv_edit = abap_true ) ).
 
-      IF dfies->fieldname = 'MANDT'.
+      IF dfies->fieldname = 'MANDT' OR mv_read_only = abap_true.
         enabled = abap_false.
       ENDIF.
 
@@ -223,8 +255,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      DATA(text) = z2ui5_cl_tm_context=>rtti_get_data_element_texts(
-                       CONV string( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
+      DATA(text) = get_label( dfies->* ).
 
       simple_form->tag( `Label`
           )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN `Bold` ELSE `Standard` )
@@ -278,12 +309,14 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
           WHEN 'D'.
 
             simple_form->tag( `DatePicker`
-                )->a( n = `value` v = client->_bind( <val> ) ).
+                )->a( n = `value` v = client->_bind( <val> )
+                )->a( n = `enabled` b = enabled ).
 
           WHEN 'T'.
 
             simple_form->tag( `TimePicker`
-                )->a( n = `value` v = client->_bind( <val> ) ).
+                )->a( n = `value` v = client->_bind( <val> )
+                )->a( n = `enabled` b = enabled ).
 
           WHEN OTHERS.
 
@@ -300,6 +333,14 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ENDLOOP.
 
+    render_popup_buttons( dialog ).
+
+    client->popup_display( popup->stringify( ) ).
+
+  ENDMETHOD.
+
+  METHOD render_popup_buttons.
+
     DATA(toolbar) = dialog->ele( `buttons` ).
 
     DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'PRC_PRI'
@@ -309,6 +350,10 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     toolbar->tag( `Button`
         )->a( n = `text` t = ls_msg-text
         )->a( n = `press` v = client->_event( 'POPUP_CLOSE' ) ).
+
+    IF mv_read_only = abap_true.
+      RETURN.
+    ENDIF.
 
     IF mv_edit = abap_true.
 
@@ -343,11 +388,44 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         )->a( n = `press` v = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
         )->a( n = `type` v = 'Emphasized' ).
 
-    client->popup_display( popup->stringify( ) ).
+  ENDMETHOD.
+
+  METHOD get_label.
+
+    DATA(rollname) = CONV string( dfies-rollname ).
+    IF mo_layout IS BOUND.
+      DATA(layout_rollname) = VALUE #( mo_layout->ms_layout-t_layout[ fname = dfies-fieldname ]-rollname OPTIONAL ).
+      IF layout_rollname IS NOT INITIAL.
+        rollname = layout_rollname.
+      ENDIF.
+    ENDIF.
+
+    IF rollname IS NOT INITIAL.
+      TRY.
+          result = z2ui5_cl_tm_context=>rtti_get_data_element_texts( rollname )-long.
+        CATCH cx_root.
+          CLEAR result.
+      ENDTRY.
+    ENDIF.
+
+    IF result IS INITIAL.
+      result = dfies-scrtext_l.
+    ENDIF.
+    IF result IS INITIAL.
+      result = dfies-fieldtext.
+    ENDIF.
+    IF result IS INITIAL.
+      result = dfies-fieldname.
+    ENDIF.
 
   ENDMETHOD.
 
   METHOD on_event.
+
+    " read-only: the popup only closes - whatever else a request asks for
+    IF mv_read_only = abap_true AND client->get( )-event <> 'POPUP_CLOSE'.
+      RETURN.
+    ENDIF.
 
     CASE client->get( )-event.
 
@@ -718,6 +796,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     result->mo_layout  = is_layout.
     result->mv_edit    = iv_edit_mode.
     result->mv_tabname = iv_tabname.
+    result->mv_read_only = iv_read_only.
 
     IF iv_copy_mode IS NOT SUPPLIED.
       result->mv_copy = abap_true.

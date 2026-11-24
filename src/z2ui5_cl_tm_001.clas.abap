@@ -11,6 +11,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     ALIASES mv_change_active     FOR z2ui5_if_tm_001~mv_change_active.
     ALIASES set_main_app_data    FOR z2ui5_if_tm_001~set_app_data.
     ALIASES ms_transport         FOR z2ui5_if_tm_001~ms_transport.
+    ALIASES ms_config            FOR z2ui5_if_tm_001~ms_config.
 
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mv_search_value TYPE string.
@@ -28,6 +29,19 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mv_check_table_input TYPE abap_bool.
 
     CONSTANTS mc_row_id TYPE string VALUE `ROW_ID` ##NO_TEXT.
+
+    "! The maintenance of one table, to start with nav_app_call( ) or as the
+    "! app of a launchpad tile of your own - next to the start by URL
+    "! (?app_start=z2ui5_cl_tm_001&amp;table=...).
+    "! @parameter i_table  | the database table
+    "! @parameter i_config | read-only mode and the layout key handle04 -
+    "!                       see z2ui5_if_tm_001=>ty_s_config
+    CLASS-METHODS factory
+      IMPORTING
+        i_table       TYPE clike
+        i_config      TYPE z2ui5_if_tm_001=>ty_s_config OPTIONAL
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_tm_001.
 
   PROTECTED SECTION.
     TYPES:
@@ -122,6 +136,11 @@ CLASS z2ui5_cl_tm_001 DEFINITION
       IMPORTING
         !page TYPE REF TO z2ui5_cl_ui5_view_builder.
 
+    "! Show the view the page belongs to - or, embedded, tell the embedder
+    METHODS render_main_display
+      IMPORTING
+        !page TYPE REF TO z2ui5_cl_ui5_view_builder.
+
     METHODS render_main_head
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
@@ -131,6 +150,16 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     METHODS on_event_layout.
 
     METHODS get_table_name.
+
+    "! Settings from the URL or the launchpad startup parameters - they can
+    "! only restrict what the caller configured (readonly=X)
+    METHODS get_config_by_url.
+
+    "! A request may change the table only outside read-only mode - the
+    "! buttons are hidden then, this is the guard behind them
+    METHODS check_change_allowed
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS render_table_input.
 
@@ -616,24 +645,25 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_table_name.
 
-    IF mv_table IS NOT INITIAL.
-      RETURN.
-    ENDIF.
-
-    " TABLE per Parameter?
-    DATA(tab) = z2ui5_cl_tm_context=>url_param_get( val = 'table'
-                                              url = client->get( )-s_config-search ).
-
-    IF tab IS INITIAL.
-      DATA(startup_params) = client->get( )-t_comp_params.
-      tab = VALUE #( startup_params[ n = 'table' ]-v OPTIONAL ).
-    ENDIF.
-
-    " no fallback table: without the parameter the app asks for one
-    " (render_table_input) instead of opening a table nobody chose
-    mv_table = to_upper( tab ).
+    " a table set by factory( ) or set_app_data( ) is checked as well
     IF mv_table IS INITIAL.
-      RETURN.
+
+      " TABLE per Parameter?
+      DATA(tab) = z2ui5_cl_tm_context=>url_param_get( val = 'table'
+                                                url = client->get( )-s_config-search ).
+
+      IF tab IS INITIAL.
+        DATA(startup_params) = client->get( )-t_comp_params.
+        tab = VALUE #( startup_params[ n = 'table' ]-v OPTIONAL ).
+      ENDIF.
+
+      " no fallback table: without the parameter the app asks for one
+      " (render_table_input) instead of opening a table nobody chose
+      mv_table = to_upper( tab ).
+      IF mv_table IS INITIAL.
+        RETURN.
+      ENDIF.
+
     ENDIF.
 
     " a name that is no table left get_data without a table to fill - a
@@ -822,7 +852,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                        )->ele( `OverflowToolbar`
                        )->tag( `ToolbarSpacer` ).
 
-    IF mv_multi_edit = abap_true.
+    IF mv_multi_edit = abap_true AND ms_config-read_only = abap_false.
       footer->tag( `Button`
           )->a( n = `text` v = get_txt( 'MLCCS_D_XDELETE' )
           )->a( n = `type` v = 'Reject'
@@ -832,6 +862,18 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           )->a( n = `text` v = get_txt( '/SCMTMS/COCO_COPY_IND' )
           )->a( n = `icon` v = 'sap-icon://copy'
           )->a( n = `press` v = client->_event( val = 'BUTTON_COPY' ) ).
+    ENDIF.
+
+    IF ms_config-read_only = abap_true.
+      " display only: refresh and the layout, nothing that changes the
+      " table or a transport request
+      footer->tag( `Button`
+          )->a( n = `icon` v = 'sap-icon://refresh'
+          )->a( n = `text` v = get_txt( 'REFRESH_F8' )
+          )->a( n = `press` v = client->_event( 'BUTTON_REFRESH' )
+          )->a( n = `type` v = 'Default' ).
+      render_main_display( page ).
+      RETURN.
     ENDIF.
 
     footer->tag( `Button`
@@ -867,6 +909,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         )->a( n = `text`  v = get_txt( 'POWL_ADMIN_TY' )
         )->a( n = `press` v = client->_event( 'BUTTON_EDIT' ) ).
 
+    render_main_display( page ).
+  ENDMETHOD.
+
+  METHOD render_main_display.
+
     IF mo_parent_view IS INITIAL.
 
       client->view_display( page->stringify( ) ).
@@ -876,6 +923,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       mv_view_display = abap_true.
 
     ENDIF.
+
   ENDMETHOD.
 
   METHOD row_select.
@@ -892,7 +940,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                     it_dfies     = mt_dfies
                                                     is_layout    = mo_layout
                                                     iv_edit_mode = abap_true
-                                                    iv_tabname   = mv_table ) ).
+                                                    iv_tabname   = mv_table
+                                                    iv_read_only = ms_config-read_only ) ).
 
   ENDMETHOD.
 
@@ -958,6 +1007,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     IF check_initialized = abap_false.
       check_initialized = abap_true.
 
+      get_config_by_url( ).
+
       get_table_name( ).
       IF mv_table IS INITIAL.
         render_table_input( ).
@@ -1002,13 +1053,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_SAVE'.
 
-        button_save( ).
+        IF check_change_allowed( ) = abap_true.
+          button_save( ).
+        ENDIF.
 
       WHEN 'BUTTON_DELETE'.
 
-        button_delete( ).
+        IF check_change_allowed( ) = abap_true.
+          button_delete( ).
+        ENDIF.
 
       WHEN 'BUTTON_ADD'.
+
+        IF check_change_allowed( ) = abap_false.
+          RETURN.
+        ENDIF.
 
         client->nav_app_call( z2ui5_cl_tm_pop=>factory( io_table     = mt_table
                                                         iv_row_id    = ``
@@ -1018,6 +1077,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                         iv_tabname   = mv_table ) ).
 
       WHEN 'BUTTON_EDIT'.
+
+        IF check_change_allowed( ) = abap_false.
+          RETURN.
+        ENDIF.
 
         mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
         DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
@@ -1048,9 +1111,46 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_COPY'.
 
-        button_copy( ).
+        IF check_change_allowed( ) = abap_true.
+          button_copy( ).
+        ENDIF.
 
     ENDCASE.
+  ENDMETHOD.
+
+  METHOD factory.
+
+    result = NEW #( ).
+    result->mv_table  = to_upper( condense( i_table ) ).
+    result->ms_config = i_config.
+
+  ENDMETHOD.
+
+  METHOD get_config_by_url.
+
+    DATA(value) = z2ui5_cl_tm_context=>url_param_get( val = 'readonly'
+                                                      url = client->get( )-s_config-search ).
+    IF value IS INITIAL.
+      DATA(startup_params) = client->get( )-t_comp_params.
+      value = VALUE #( startup_params[ n = 'readonly' ]-v OPTIONAL ).
+    ENDIF.
+
+    " only ever switched on here: a URL must not lift the read-only mode a
+    " caller configured
+    CASE to_upper( condense( value ) ).
+      WHEN `X` OR `TRUE` OR `1`.
+        ms_config-read_only = abap_true.
+    ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD check_change_allowed.
+
+    result = xsdbool( ms_config-read_only = abap_false ).
+    IF result = abap_false.
+      client->message_toast_display( `The table is shown in read-only mode.` ).
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD z2ui5_if_tm_001~set_app_data.
@@ -1099,7 +1199,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                 handle01 = class
                                                 handle02 = mv_table
                                                 handle03 = 'SIMPLE_VIEW'
-                                                handle04 = `` ).
+                                                handle04 = ms_config-layout_handle04 ).
 
   ENDMETHOD.
 
@@ -1137,6 +1237,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_transport.
+
+    IF ms_config-read_only = abap_true.
+      RETURN.
+    ENDIF.
 
     CASE client->get( )-event.
       WHEN 'TRANSPORT_ALL'.
