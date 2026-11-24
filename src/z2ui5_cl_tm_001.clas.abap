@@ -71,6 +71,19 @@ CLASS z2ui5_cl_tm_001 DEFINITION
       RETURNING
         VALUE(result) TYPE string.
 
+    "! The text of message no of class id - or fallback where the message
+    "! class or number is not on the system (an EWM or S/4HANA system may
+    "! lack the classes the texts are borrowed from; a missing message
+    "! answers with its own class and number, or nothing)
+    METHODS get_msg
+      IMPORTING
+        !id           TYPE clike
+        !no           TYPE clike
+        v1            TYPE clike OPTIONAL
+        fallback      TYPE string
+      RETURNING
+        VALUE(result) TYPE string.
+
     METHODS button_save.
 
     "! MOVE-CORRESPONDING between two tables, row by row - the table form needs
@@ -173,6 +186,23 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD get_msg.
+
+    TRY.
+        result = z2ui5_cl_tm_context=>msg_get_by_msg( id = id
+                                                      no = no
+                                                      v1 = v1 )-text.
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+    IF result IS INITIAL
+        OR ( to_upper( result ) CS to_upper( id ) AND result CS no ).
+      result = fallback.
+    ENDIF.
+
+  ENDMETHOD.
+
   METHOD button_save.
 
     DATA t_table     TYPE REF TO data.
@@ -254,30 +284,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
       ENDLOOP.
 
+      " the database first, the transport after it, one COMMIT for both: a
+      " request entry written before a save that then failed (and was
+      " rolled back) stayed on the request
+      DATA(subrc) = 0.
       TRY.
 
-          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
-                                                      iv_tabname   = mv_table
-                                                      is_transport = ms_transport ).
-
-          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
-                                                      iv_tabname   = mv_table
-                                                      is_transport = ms_transport ).
-
-        CATCH cx_root.
-
-          DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
-                                                        no = `316` ).
-          " MESSAGE e316(42) into DATA(msg).  " Transport request error
-          client->message_toast_display( ls_msg-text ).
-          RETURN.
-      ENDTRY.
-
-      TRY.
-
-          " deletions and writes are one LUW, committed once both went through:
-          " a deletion committed on its own could not be rolled back when the
-          " write after it failed
           IF <del_org> IS NOT INITIAL.
             " sy-subrc 4 only means a row was no longer in the database
             DELETE (mv_table) FROM TABLE @<del_org>.
@@ -289,40 +301,66 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             DELETE (mv_table) FROM TABLE @<tab_org>.
             INSERT (mv_table) FROM TABLE @<tab_org>.
           ENDIF.
-
-          IF sy-subrc = 0.
-            COMMIT WORK AND WAIT.
-            " a buffered table would show the old entries until the next
-            " buffer synchronisation - here, in the app, after a refresh
-            z2ui5_cl_tm_context=>db_reset_table_buffer( mv_table ).
-
-            " what was saved is the database state the next save compares
-            " against - the deletions are done, rows added since can be
-            " deleted later
-            set_snapshot( <tab> ).
-
-            ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
-                                                    no = `002` ).
-            " MESSAGE s002(i18n) INTO msg.
-            client->message_toast_display( ls_msg-text ).
-
-            CLEAR mv_change_active.
-          ELSE.
-            " not every row could be written - undone instead of left in
-            " the LUW for the next commit to write half of it
-            ROLLBACK WORK.
-            client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
-                                         type = `error` ).
-          ENDIF.
+          subrc = sy-subrc.
 
         CATCH cx_root INTO DATA(lx_db).
           " a failed write (a duplicate key on INSERT, a value the column
-          " does not take) used to end here without a word, the rows
-          " deleted just before still waiting in the LUW
+          " does not take): the rows deleted just before are undone with it
           ROLLBACK WORK.
           client->message_box_display( text = lx_db->get_text( )
                                        type = `error` ).
+          RETURN.
       ENDTRY.
+
+      IF subrc <> 0.
+        " not every row could be written - undone instead of left in the
+        " LUW for the next commit to write half of it
+        ROLLBACK WORK.
+        client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
+                                     type = `error` ).
+        RETURN.
+      ENDIF.
+
+      TRY.
+
+          " the rows of the table and the deletions, as before - without a
+          " commit of their own, the COMMIT below takes them with the rows
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
+                                                      iv_tabname   = mv_table
+                                                      is_transport = ms_transport
+                                                      iv_commit    = abap_false ).
+
+          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
+                                                      iv_tabname   = mv_table
+                                                      is_transport = ms_transport
+                                                      iv_commit    = abap_false ).
+
+        CATCH cx_root INTO DATA(lx_tr).
+          " no transport, no save: the database changes go back as well
+          ROLLBACK WORK.
+          client->message_box_display( text = |{ get_msg( id       = '42'
+                                                          no       = `316`
+                                                          fallback = `Transport request error` ) }: { lx_tr->get_text( ) } - the changes were not saved|
+                                       type = `error` ).
+          RETURN.
+      ENDTRY.
+
+      COMMIT WORK AND WAIT.
+
+      " a buffered table would show the old entries until the next buffer
+      " synchronisation - here, in the app, after a refresh
+      z2ui5_cl_tm_context=>db_reset_table_buffer( mv_table ).
+
+      " what was saved is the database state the next save compares
+      " against - the deletions are done, rows added since can be deleted
+      " later
+      set_snapshot( <tab> ).
+
+      client->message_toast_display( get_msg( id       = 'i18n'
+                                              no       = `002`
+                                              fallback = `Data was saved` ) ).
+
+      CLEAR mv_change_active.
 
     ENDIF.
 

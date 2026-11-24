@@ -1,4 +1,4 @@
 {
   "abap2UI5-addons/layout-management": { "branch": "main", "sha": "ff67bb1237fa1d0f68c0a31cd0febd5ab3eb7e21" },
-  "abap2UI5-addons/popups": { "branch": "main", "sha": "510189e24a37697bafdc3a3cbb396a84450d8bf6" }
+  "abap2UI5-addons/popups": { "branch": "DEV", "sha": "38e05c444036632f8bac38f2a200c2f59c1a26fb" }
 }
