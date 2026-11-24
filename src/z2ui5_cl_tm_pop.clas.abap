@@ -404,9 +404,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(rollname) = CONV string( dfies-rollname ).
     IF mo_layout IS BOUND.
-      DATA(layout_rollname) = VALUE #( mo_layout->ms_layout-t_layout[ fname = dfies-fieldname ]-rollname OPTIONAL ).
-      IF layout_rollname IS NOT INITIAL.
-        rollname = layout_rollname.
+      READ TABLE mo_layout->ms_layout-t_layout INTO DATA(layout) WITH KEY fname = dfies-fieldname.
+      IF sy-subrc = 0 AND layout-rollname IS NOT INITIAL.
+        rollname = layout-rollname.
       ENDIF.
     ENDIF.
 

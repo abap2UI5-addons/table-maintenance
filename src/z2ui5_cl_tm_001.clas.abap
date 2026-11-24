@@ -1154,10 +1154,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     " only ever switched on here: a URL must not lift the read-only mode a
     " caller configured
-    CASE to_upper( condense( value ) ).
-      WHEN `X` OR `TRUE` OR `1`.
-        ms_config-read_only = abap_true.
-    ENDCASE.
+    value = to_upper( condense( value ) ).
+    IF value = `X` OR value = `TRUE` OR value = `1`.
+      ms_config-read_only = abap_true.
+    ENDIF.
 
   ENDMETHOD.
 
