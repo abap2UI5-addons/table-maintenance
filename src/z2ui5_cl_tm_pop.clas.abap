@@ -230,7 +230,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
             )->a( n = `showValueHelp` b = abap_true
             )->a( n = `enabled` b = enabled
             )->a( n = `type` v = type
-            )->a( n = `maxLength` v = dfies->leng
+            )->a( n = `maxLength` v = |{ CONV i( dfies->leng ) }|
             )->a( n = `valueHelpRequest` v = client->_event( val   = 'CALL_POPUP_F4'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
@@ -241,7 +241,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
             )->a( n = `showValueHelp` b = abap_true
             )->a( n = `enabled` b = enabled
             )->a( n = `type` v = type
-            )->a( n = `maxLength` v = dfies->leng
+            )->a( n = `maxLength` v = |{ CONV i( dfies->leng ) }|
             )->a( n = `valueHelpRequest` v = client->_event( val   = 'CALL_POPUP_SHLP'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
@@ -275,7 +275,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                 )->a( n = `showValueHelp` b = abap_false
                 )->a( n = `enabled` b = enabled
                 )->a( n = `type` v = type
-                )->a( n = `maxLength` v = dfies->leng ).
+                )->a( n = `maxLength` v = |{ CONV i( dfies->leng ) }| ).
 
         ENDCASE.
 
@@ -444,7 +444,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      <fixval> = z2ui5_cl_tm_context=>rtti_get_t_ddic_fixed_values( CONV #( dfies->rollname ) ).
+      <fixval> = z2ui5_cl_tm_context=>rtti_get_t_ddic_fixed_values( dfies->rollname ).
 
     ENDLOOP.
 
