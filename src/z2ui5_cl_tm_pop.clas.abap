@@ -9,8 +9,9 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA ms_data_row TYPE REF TO data.
     " Importing
     DATA mo_layout   TYPE REF TO z2ui5_cl_layo_manager.
+    " the caller's table with the change of this popup - read it back once
+    " the popup returned; after a cancel it is the table as it came in
     DATA mt_data     TYPE REF TO data.
-    DATA mt_data_tmp TYPE REF TO data.
 
     CLASS-METHODS factory
       IMPORTING
@@ -32,6 +33,16 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_copy      TYPE abap_bool.
 
     DATA mv_row_id    TYPE string.
+    " rows of the caller's table - before a cancel this popup has only
+    " appended rows (the new row of an add, the rows of a copy), so the
+    " cancel cuts mt_data back to this count instead of keeping a second
+    " copy of the table in the app state
+    DATA mv_lines_org TYPE i.
+    " the row the popup was opened for, as it came in - the cancel puts it
+    " back, so it also holds should a later change write into the row before
+    " the popup is left
+    DATA mv_row_id_org TYPE string.
+    DATA mr_row_org   TYPE REF TO data.
     DATA mv_f4_fname  TYPE string.
     DATA mv_shlpfield TYPE string.
 
@@ -83,6 +94,10 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS on_after_f4.
     METHODS copy_table_line.
     METHODS get_view_settings.
+
+    "! Undo what the popup did to mt_data: drop the appended rows, put the
+    "! row it was opened for back as it came in
+    METHODS cancel.
 
   PRIVATE SECTION.
 
@@ -375,10 +390,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       WHEN 'POPUP_CLOSE'.
 
-        ASSIGN mt_data_tmp->* TO FIELD-SYMBOL(<mt_data_tmp>).
-        ASSIGN mt_data->* TO FIELD-SYMBOL(<mt_data>).
-
-        <mt_data> = <mt_data_tmp>.
+        cancel( ).
 
         client->popup_destroy( ).
 
@@ -725,25 +737,35 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA result->mt_data     TYPE HANDLE new_table_desc.
-        CREATE DATA result->mt_data_tmp TYPE HANDLE new_table_desc.
         CREATE DATA result->ms_data_row TYPE HANDLE new_struct_desc.
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
     ASSIGN io_table->* TO FIELD-SYMBOL(<io_table>).
-    ASSIGN result->mt_data->* TO FIELD-SYMBOL(<mt_data>).
-    ASSIGN result->mt_data_tmp->* TO FIELD-SYMBOL(<mt_data_tmp>).
+    ASSIGN result->mt_data->* TO <tab>.
+    IF <io_table> IS NOT ASSIGNED OR <tab> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
 
-    <mt_data> = <io_table>.
-    <mt_data_tmp> = <io_table>.
+    <tab> = <io_table>.
+    result->mv_lines_org = lines( <tab> ).
 
-    IF iv_row_id IS INITIAL.
+    IF iv_row_id IS NOT INITIAL.
 
-      ASSIGN result->mt_data->* TO <tab>.
-      IF <tab> IS NOT ASSIGNED.
-        RETURN.
-      ENDIF.
+      " the one row the popup works on - its state for the cancel
+      LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<row_org>).
+        ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <row_org> TO FIELD-SYMBOL(<row_org_id>).
+        IF sy-subrc = 0 AND <row_org_id> = iv_row_id.
+          CREATE DATA result->mr_row_org LIKE <row_org>.
+          ASSIGN result->mr_row_org->* TO FIELD-SYMBOL(<row_org_copy>).
+          <row_org_copy> = <row_org>.
+          result->mv_row_id_org = iv_row_id.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+
+    ELSE.
 
       APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
@@ -861,6 +883,36 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_view_settings.
+
+  ENDMETHOD.
+
+  METHOD cancel.
+
+    FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <row_org> TYPE any.
+
+    ASSIGN mt_data->* TO <tab>.
+    IF <tab> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
+    DATA(first_added) = mv_lines_org + 1.
+    IF lines( <tab> ) >= first_added.
+      DELETE <tab> FROM first_added.
+    ENDIF.
+
+    IF mr_row_org IS NOT BOUND.
+      RETURN.
+    ENDIF.
+    ASSIGN mr_row_org->* TO <row_org>.
+
+    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
+      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
+      IF sy-subrc = 0 AND <row_id> = mv_row_id_org.
+        <line> = <row_org>.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
 
   ENDMETHOD.
 
