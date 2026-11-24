@@ -1138,10 +1138,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
           READ TABLE mo_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
 
-          IF line-reference_field IS INITIAL.
-            DATA(column) = |{ line-tlabel }: \{{ subcol-fname }\}|.
-          ELSE.
-            column = |{ line-tlabel }: \{{ subcol-fname }\} \{{ line-reference_field }\}|.
+          " relative to the row: a namespaced column (/CWM/XCWMAT) is a
+          " level of the row in the model, {CWM/XCWMAT}
+          DATA(column) = |{ line-tlabel }: \{{ z2ui5_cl_ui5_view_builder=>component_path( subcol-fname ) }\}|.
+          IF line-reference_field IS NOT INITIAL.
+            column = |{ column } \{{ z2ui5_cl_ui5_view_builder=>component_path( line-reference_field ) }\}|.
           ENDIF.
 
           IF index = 1.
@@ -1150,23 +1151,20 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.
           ENDIF.
         ENDLOOP.
+      ENDIF.
 
-        IF layout->reference_field IS NOT INITIAL.
-          cells->ele( `ObjectIdentifier`
-              )->a( n = `title` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}|
-              )->a( n = `text` v = sub_col ).
-        ELSE.
-          cells->ele( `ObjectIdentifier`
-              )->a( n = `title` v = |\{{ layout->fname }\}|
-              )->a( n = `text` v = sub_col ).
-        ENDIF.
+      DATA(cell) = |\{{ z2ui5_cl_ui5_view_builder=>component_path( layout->fname ) }\}|.
+      IF layout->reference_field IS NOT INITIAL.
+        cell = |{ cell } \{{ z2ui5_cl_ui5_view_builder=>component_path( layout->reference_field ) }\}|.
+      ENDIF.
 
-      ELSEIF layout->reference_field IS NOT INITIAL.
+      IF layout->t_sub_col IS NOT INITIAL.
         cells->ele( `ObjectIdentifier`
-            )->a( n = `text` v = |\{{ layout->fname }\} \{{ layout->reference_field }\}| ).
+            )->a( n = `title` v = cell
+            )->a( n = `text` v = sub_col ).
       ELSE.
         cells->ele( `ObjectIdentifier`
-            )->a( n = `text` v = |\{{ layout->fname }\}| ).
+            )->a( n = `text` v = cell ).
       ENDIF.
     ENDLOOP.
 
@@ -1673,6 +1671,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
+      " relative to the row: a namespaced column (/CWM/XCWMAT) is a level
+      " of the row in the model - the cell, the sorter and the filter read
+      " CWM/XCWMAT
+      " abap2ui5lint-disable-next-line unknown-builder-method -- component_path( ) is a static of the builder since abap2UI5 40e8a073, the linter 0.11 does not know it yet
+      DATA(path) = z2ui5_cl_ui5_view_builder=>component_path( layout->fname ).
 
       DATA(col) = columns->ele( n = `Column` ns = `table`
                       )->a( n = `visible` v = client->_bind( val       = layout->visible
@@ -1682,8 +1685,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                THEN client->_bind( val       = layout->width
                                                                    tab       = mo_layout->ms_layout-t_layout
                                                                    tab_index = lv_index ) )
-                      )->a( n = `sortProperty` v = CONV string( layout->fname )
-                      )->a( n = `filterProperty` v = CONV string( layout->fname )
+                      )->a( n = `sortProperty` v = path
+                      )->a( n = `filterProperty` v = path
                       )->tag( `Text`
                       )->a( n = `text` v = layout->tlabel
                       )->ele( n = `template` ns = `table` ).
@@ -1691,13 +1694,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       IF layout->fname = 'SELKZ'.
 
         col->tag( `CheckBox`
-            )->a( n = `selected` v = |\{{ layout->fname }\}| ).
+            )->a( n = `selected` v = |\{{ path }\}| ).
 
       ELSE.
 
         col->tag( `Input`
             )->a( n = `submit` v = client->_event( val = 'INPUT' )
-            )->a( n = `value` v = |\{{ layout->fname }\}| ).
+            )->a( n = `value` v = |\{{ path }\}| ).
 
       ENDIF.
     ENDLOOP.
