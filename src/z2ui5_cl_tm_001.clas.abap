@@ -12,6 +12,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     ALIASES set_main_app_data    FOR z2ui5_if_tm_001~set_app_data.
     ALIASES ms_transport         FOR z2ui5_if_tm_001~ms_transport.
     ALIASES ms_config            FOR z2ui5_if_tm_001~ms_config.
+    ALIASES release_lock         FOR z2ui5_if_tm_001~release_lock.
 
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mv_search_value TYPE string.
@@ -33,11 +34,6 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     CONSTANTS mc_row_id TYPE string VALUE `ROW_ID` ##NO_TEXT.
     " the column of mt_table_org with the hash of the row
     CONSTANTS mc_row_hash TYPE string VALUE `TM_ROW_HASH` ##NO_TEXT.
-
-    "! Release the edit lock of the table and switch the session back to
-    "! stateless - for an embedder that drops this instance while it holds
-    "! the lock (z2ui5_cl_tm_002 on a tab change). Nothing if none is held.
-    METHODS release_lock.
 
     "! The maintenance of one table, to start with nav_app_call( ) or as the
     "! app of a launchpad tile of your own - next to the start by URL
@@ -955,7 +951,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD release_lock.
+  METHOD z2ui5_if_tm_001~release_lock.
 
     IF mv_lock_active = abap_false.
       RETURN.

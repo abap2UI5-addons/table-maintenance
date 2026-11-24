@@ -34,4 +34,9 @@ INTERFACE z2ui5_if_tm_001
     IMPORTING
       data TYPE string.
 
+  "! Release the edit lock of the table and switch the session back to
+  "! stateless - for an embedder that drops this instance while it holds
+  "! the lock (a view cluster on a tab change). Nothing if none is held.
+  METHODS release_lock.
+
 ENDINTERFACE.
