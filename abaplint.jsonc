@@ -629,9 +629,9 @@
     // (.claude/skills/view-chain-layout in abap2UI5) or the house alignment -
     // off in abap2UI5 and in the app rule set as well
     "align_parameters": false,
-    "empty_line_in_statement": false,
+    "empty_line_in_statement": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "in_statement_indentation": false,
-    "indentation": false,
+    "indentation": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "keep_single_parameter_on_one_line": false,
     "line_break_multiple_parameters": false,
     "line_only_punc": false,
@@ -646,13 +646,13 @@
     "no_prefixes": false,
     // style preferences abap2UI5 and the app rule set both keep off
     "abapdoc": false,
-    "generic_regex": false,
+    "generic_regex": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "no_inline_in_optional_branches": false,
     "prefer_corresponding": false,
     "prefer_inline": false,
-    "prefer_inline_cast": false,
+    "prefer_inline_cast": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "prefer_insert_into_table": false,
-    "prefer_string_template": false,
+    "prefer_string_template": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     // off as in abap2UI5's abaplint.jsonc: the commented MESSAGE statements
     // in z2ui5_cl_tm_pop / z2ui5_cl_tm_001 name the T100 message a text comes
     // from (where-used), and the vendored z2ui5_cl_tm_context keeps the
