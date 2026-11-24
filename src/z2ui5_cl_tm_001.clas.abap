@@ -418,7 +418,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       UNASSIGN <id>.
       ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
 
-      DATA(keys) = VALUE ty_s_keys( row_id = <id> ).
+      " the snapshot has no ROW_ID - its keys are matched by position
+      DATA(keys) = VALUE ty_s_keys( ).
+      IF <id> IS ASSIGNED.
+        keys-row_id = <id>.
+      ENDIF.
       DATA(value) = ``.
 
       " the client is left out: the rows read are all of the logon client, a row
