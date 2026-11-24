@@ -55,6 +55,15 @@
     "allowed_object_naming": true,
     "ambiguous_statement": true,
     "avoid_use": {
+      "skipQuickFix": false,
+      "define": true,
+      "statics": true,
+      "defaultKey": true,
+      "break": true,
+      "testSeams": true,
+      "describeLines": true,
+      "exportToMemory": true,
+      "exportToDatabase": true,
       // the vendored abap-util copies stay close to the master (AGENTS.md)
       "exclude": ["z2ui5_cl_tm_context", "z2ui5_cx_tm_error"]
     },
@@ -94,6 +103,7 @@
     "empty_event": true,
     "empty_statement": true,
     "empty_structure": {
+      "loopAllowIfSubrc": true,
       "at": true,
       "case": true,
       "catch": true,
@@ -232,6 +242,7 @@
     "preferred_compare_operator": true,
     "preferred_parameter_ignored": true,
     "prefix_is_current_class": {
+      "omitMeInstanceCalls": true,
       "exclude": [],
       "severity": "Warning"
     },
@@ -250,6 +261,7 @@
     "select_single_full_key": true,
     "selection_screen_naming": true,
     "sequential_blank": {
+      "lines": 4,
       "exclude": [],
       "severity": "Warning"
     },
@@ -322,6 +334,20 @@
     "inline_packed_computation": true,
     "no_mandt_in_database_operations": true,
     "object_naming": {
+      "sxci": "^Z",
+      "enhs": "^Z",
+      "enho": "^Z",
+      "cmod": "^Z",
+      "form": "^Z",
+      "sfpf": "^Z",
+      "sfpi": "^Z",
+      "aqqu": "^Z",
+      "aqsg": "^Z",
+      "aqbg": "^Z",
+      "suso": "^Z",
+      "sucu": "^Z",
+      "wdya": "^Z",
+      "wdyn": "^Z",
       "severity": "Error",
       "patternKind": "required",
       "ignoreNames": [],
@@ -361,6 +387,7 @@
     "change_if_to_case": true,
     "if_in_if": true,
     "no_aliases": {
+      "ignorePrivate": false,
       "exclude": [
         "/src/z2ui5_cl_tm_001"
       ]
@@ -377,6 +404,7 @@
       ]
     },
     "unused_variables": {
+      "skipAbstract": false,
       "severity": "Error",
       "skipNames": [
         "lv_dummy",
@@ -429,9 +457,12 @@
     "inline_generic_source": true,
     // 255: the longest line abapGit and the ABAP editor accept
     "line_length": {
+      "maxIssuesPerFile": 10,
       "length": 255
     },
     "local_class_naming": {
+      "ignoreNames": [],
+      "ignorePatterns": [],
       "patternKind": "required",
       "local": "^LCL_.+$",
       "exception": "^LCX_.+$",
@@ -457,12 +488,18 @@
     // PRIMARY KEY on the table read (the rows are sorted right after anyway)
     "check_comments": true,
     "double_space": {
+      "skipKeywords": ["CHANGING","EXPORTING","OTHERS"],
       "keywords": false,
       "startParen": true,
       "endParen": false,
       "afterColon": true
     },
     "keyword_case": {
+      "ignoreGlobalClassDefinition": false,
+      "ignoreGlobalInterface": false,
+      "ignoreFunctionModuleName": false,
+      "ignoreGlobalClassBoundaries": false,
+      "maxIssuesPerFile": 10,
       "style": "upper",
       "ignoreExceptions": true,
       "ignoreLowerClassImplmentationStatement": true,
@@ -474,6 +511,19 @@
     "select_add_order_by": true,
     // added 2026-11 with abap2UI5's settings and narrow exceptions:
     "check_subrc": {
+      "openDataset": true,
+      "authorityCheck": true,
+      "selectSingle": true,
+      "selectTable": true,
+      "updateDatabase": true,
+      "insertDatabase": true,
+      "modifyDatabase": true,
+      "deleteDatabase": true,
+      "readTable": true,
+      "assign": true,
+      "find": true,
+      "callFunction": true,
+      "callMethod": true,
       // z2ui5_cl_tm_001 and z2ui5_cl_tm_pop read ASSIGN COMPONENT / READ TABLE
       // results and dynamic DB writes without sy-subrc by design at 15 sites;
       // each needs its own error-handling decision, not a mechanical fix.
@@ -495,6 +545,8 @@
     // part of abap2UI5's settings switched off here; every other dangerous
     // statement stays reported
     "dangerous_statement": {
+      "editorCallForReport": true,
+      "ignoreRAPQueryProvider": true,
       "insertTextpool": true,
       "execSQL": true,
       "kernelCall": true,
@@ -519,6 +571,7 @@
       ]
     },
     "method_length": {
+      "checkFunctionModules": true,
       // button_save, on_after_popup (z2ui5_cl_tm_001) and the popup view
       // (z2ui5_cl_tm_pop): splitting them is a refactoring; the vendored
       // z2ui5_cl_tm_context stays close to the master
