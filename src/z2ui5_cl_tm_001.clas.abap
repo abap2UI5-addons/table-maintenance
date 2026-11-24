@@ -17,10 +17,12 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mv_search_value TYPE string.
     DATA mt_table        TYPE REF TO data.
     DATA mt_table_tmp    TYPE REF TO data.
-    " the rows as in the database (read, or written by the last successful
-    " save), key fields only: save deletes the keys that are no longer in
-    " the table - the other columns are not needed for that, and the app
-    " state is serialized on every roundtrip
+    " the rows as in the database (read, or after the last successful
+    " save), key fields and a hash of the row (mc_row_hash) only: save
+    " deletes the keys that are no longer in the table, and refuses to
+    " overwrite rows that changed in the database since - the other columns
+    " are not needed for that, and the app state is serialized on every
+    " roundtrip
     DATA mt_table_org    TYPE REF TO data.
     " the table name typed in when the app was started without one
     DATA mv_table_input  TYPE string.
@@ -29,6 +31,13 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mv_check_table_input TYPE abap_bool.
 
     CONSTANTS mc_row_id TYPE string VALUE `ROW_ID` ##NO_TEXT.
+    " the column of mt_table_org with the hash of the row
+    CONSTANTS mc_row_hash TYPE string VALUE `TM_ROW_HASH` ##NO_TEXT.
+
+    "! Release the edit lock of the table and switch the session back to
+    "! stateless - for an embedder that drops this instance while it holds
+    "! the lock (z2ui5_cl_tm_002 on a tab change). Nothing if none is held.
+    METHODS release_lock.
 
     "! The maintenance of one table, to start with nav_app_call( ) or as the
     "! app of a launchpad tile of your own - next to the start by URL
@@ -61,6 +70,9 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mv_key_error      TYPE abap_bool.
 
     DATA mv_ucomm_tmp      TYPE string.
+    " the edit lock is held in a stateful session, from the first change
+    " until the changes are saved or dropped - see edit_lock
+    DATA mv_lock_active    TYPE abap_bool.
 
     METHODS on_init.
 
@@ -135,6 +147,47 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     METHODS set_snapshot
       IMPORTING
         !table TYPE STANDARD TABLE.
+
+    "! The rows of the table as in the database now, past the table buffer,
+    "! into a table of the type of mt_table
+    METHODS get_db_rows
+      RETURNING
+        VALUE(result) TYPE REF TO data.
+
+    "! A hash of the values of a row - every field but the client
+    METHODS get_row_hash
+      IMPORTING
+        !row          TYPE any
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! Whether the database still holds what the snapshot says - the
+    "! optimistic check of the save: false if another user or program
+    "! added, changed or deleted a row since it was read
+    METHODS check_db_unchanged
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! ENQUEUE_E_TABLE for the table (and the logon client, if the table has
+    "! one) with _scope 1, so a COMMIT WORK does not release it. A message
+    "! names the user who holds it if it is taken. Standard ABAP only - on
+    "! ABAP Cloud there is no such lock object and result is abap_true.
+    METHODS lock
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! DEQUEUE_E_TABLE, the counterpart of lock( )
+    METHODS unlock.
+
+    "! The lock for the changes that start now (add, edit, multi-edit): taken
+    "! once and kept in a stateful session until the changes are saved or
+    "! dropped. result is abap_false if another user holds it.
+    METHODS edit_lock
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! Release the edit lock when nothing is left unsaved
+    METHODS edit_unlock_if_idle.
 
     METHODS render_main_footer
       IMPORTING
@@ -256,6 +309,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <tab_org> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <del_org> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <del>     TYPE any.
+    FIELD-SYMBOLS <saved>   TYPE STANDARD TABLE.
 
     IF ms_transport IS INITIAL.
 
@@ -326,6 +380,23 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
       ENDLOOP.
 
+      " the save holds the lock itself, whatever the session: in a stateless
+      " one the edit lock is gone, in a stateful one this only counts it up
+      IF lock( ) = abap_false.
+        RETURN.
+      ENDIF.
+
+      " optimistic check: what the snapshot says must still be in the
+      " database - changes of another user or program since the read are
+      " not overwritten
+      IF check_db_unchanged( ) = abap_false.
+        unlock( ).
+        client->message_box_display( text = |The entries of { mv_table } were changed in the database since they were read, by another user or program. | &&
+                                            |Your changes were not saved - refresh the table and enter them again.|
+                                     type = `error` ).
+        RETURN.
+      ENDIF.
+
       " the database first, the transport after it, one COMMIT for both: a
       " request entry written before a save that then failed (and was
       " rolled back) stayed on the request
@@ -349,6 +420,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " a failed write (a duplicate key on INSERT, a value the column
           " does not take): the rows deleted just before are undone with it
           ROLLBACK WORK.
+          unlock( ).
           client->message_box_display( text = lx_db->get_text( )
                                        type = `error` ).
           RETURN.
@@ -358,6 +430,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         " not every row could be written - undone instead of left in the
         " LUW for the next commit to write half of it
         ROLLBACK WORK.
+        unlock( ).
         client->message_box_display( text = |Not every row could be written to { mv_table } - the changes were not saved|
                                      type = `error` ).
         RETURN.
@@ -380,6 +453,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         CATCH cx_root INTO DATA(lx_tr).
           " no transport, no save: the database changes go back as well
           ROLLBACK WORK.
+          unlock( ).
           client->message_box_display( text = |{ get_msg( id       = '42'
                                                           no       = `316`
                                                           fallback = `Transport request error` ) }: { lx_tr->get_text( ) } - the changes were not saved|
@@ -395,14 +469,24 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       " what was saved is the database state the next save compares
       " against - the deletions are done, rows added since can be deleted
-      " later
-      set_snapshot( <tab> ).
+      " later. Read back, still under the lock, rather than taken from the
+      " rows written: the hash is then the one of what the database holds
+      DATA(db) = get_db_rows( ).
+      IF db IS BOUND.
+        ASSIGN db->* TO <saved>.
+        set_snapshot( <saved> ).
+      ELSE.
+        set_snapshot( <tab> ).
+      ENDIF.
+
+      unlock( ).
 
       client->message_toast_display( get_msg( id       = 'i18n'
                                               no       = `002`
                                               fallback = `Data was saved` ) ).
 
       CLEAR mv_change_active.
+      edit_unlock_if_idle( ).
 
     ENDIF.
 
@@ -567,8 +651,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         ASSIGN mt_table->* TO <table>.
 
+        " past the table buffer, as the check before the save reads it
         SELECT *
-          FROM (mv_table)
+          FROM (mv_table) BYPASSING BUFFER
           ORDER BY PRIMARY KEY
           INTO CORRESPONDING FIELDS OF TABLE @<table>.
 
@@ -594,12 +679,18 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_comp_key.
 
+    " a string: should the hash fail, the values themselves stand in
+    DATA hash TYPE string.
+
     LOOP AT t_comp INTO DATA(comp).
       IF line_exists( mt_dfies[ fieldname = comp-name
                                 keyflag   = abap_true ] ).
         APPEND comp TO result.
       ENDIF.
     ENDLOOP.
+
+    APPEND VALUE #( name = mc_row_hash
+                    type = CAST #( cl_abap_datadescr=>describe_by_data( hash ) ) ) TO result.
 
   ENDMETHOD.
 
@@ -614,6 +705,267 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     copy_corresponding( EXPORTING it_source = table
                         CHANGING  ct_target = <org> ).
+
+    " copy_corresponding keeps the order - row n of <org> is row n of table
+    LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line_org>).
+      DATA(index) = sy-tabix.
+      READ TABLE table ASSIGNING FIELD-SYMBOL(<line>) INDEX index.
+      ASSIGN COMPONENT mc_row_hash OF STRUCTURE <line_org> TO FIELD-SYMBOL(<hash>).
+      IF sy-subrc = 0 AND <line> IS ASSIGNED.
+        <hash> = get_row_hash( <line> ).
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD get_db_rows.
+
+    FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <db>  TYPE STANDARD TABLE.
+
+    ASSIGN mt_table->* TO <tab>.
+    IF <tab> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
+    CREATE DATA result LIKE <tab>.
+    ASSIGN result->* TO <db>.
+
+    " past the table buffer: a buffered table may answer with the state of
+    " before another server's change, and the save compares with the
+    " database
+    TRY.
+        SELECT *
+          FROM (mv_table) BYPASSING BUFFER
+          ORDER BY PRIMARY KEY
+          INTO CORRESPONDING FIELDS OF TABLE @<db>.
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD get_row_hash.
+
+    DATA values TYPE string.
+
+    LOOP AT mt_dfies INTO DATA(dfies) WHERE datatype <> 'CLNT' AND fieldname <> 'MANDT'.
+      ASSIGN COMPONENT dfies-fieldname OF STRUCTURE row TO FIELD-SYMBOL(<value>).
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+      " each value with its length in front, as in get_keys
+      DATA(value) = |{ <value> }|.
+      values = |{ values }{ strlen( value ) }:{ value }|.
+    ENDLOOP.
+
+    TRY.
+        cl_abap_message_digest=>calculate_hash_for_char( EXPORTING if_data       = values
+                                                         IMPORTING ef_hashstring = result ).
+      CATCH cx_root.
+        " no hash - the values themselves compare just as well
+        result = values.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD check_db_unchanged.
+
+    DATA state_db       TYPE SORTED TABLE OF string WITH NON-UNIQUE KEY table_line.
+    DATA state_snapshot TYPE SORTED TABLE OF string WITH NON-UNIQUE KEY table_line.
+
+    FIELD-SYMBOLS <db>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <org> TYPE STANDARD TABLE.
+
+    DATA(db) = get_db_rows( ).
+    ASSIGN mt_table_org->* TO <org>.
+    IF db IS NOT BOUND OR <org> IS NOT ASSIGNED.
+      " nothing to compare with - the write itself reports what is wrong
+      result = abap_true.
+      RETURN.
+    ENDIF.
+    ASSIGN db->* TO <db>.
+
+    DATA(keys) = get_keys( <db> ).
+    LOOP AT <db> ASSIGNING FIELD-SYMBOL(<line>).
+      READ TABLE keys INTO DATA(key) INDEX sy-tabix.
+      INSERT |{ key-key }#{ get_row_hash( <line> ) }| INTO TABLE state_db.
+    ENDLOOP.
+
+    keys = get_keys( <org> ).
+    LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line_org>).
+      READ TABLE keys INTO key INDEX sy-tabix.
+      ASSIGN COMPONENT mc_row_hash OF STRUCTURE <line_org> TO FIELD-SYMBOL(<hash>).
+      IF sy-subrc = 0.
+        INSERT |{ key-key }#{ <hash> }| INTO TABLE state_snapshot.
+      ENDIF.
+    ENDLOOP.
+
+    result = xsdbool( state_db = state_snapshot ).
+
+  ENDMETHOD.
+
+  METHOD lock.
+
+    DATA lv_fm      TYPE c LENGTH 30 VALUE `ENQUEUE_E_TABLE`.
+    DATA lv_mode    TYPE c LENGTH 1 VALUE `E`.
+    DATA lv_scope   TYPE c LENGTH 1 VALUE `1`.
+    DATA lv_tabname TYPE c LENGTH 30.
+    DATA lv_varkey  TYPE c LENGTH 250.
+
+    result = abap_true.
+    IF z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
+      RETURN.
+    ENDIF.
+
+    lv_tabname = mv_table.
+    " a client-dependent table is locked in the logon client only
+    IF line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
+      lv_varkey = sy-mandt.
+    ENDIF.
+
+    " called by name, so the class compiles where the module does not exist
+    TRY.
+        IF lv_varkey IS INITIAL.
+          CALL FUNCTION lv_fm
+            EXPORTING
+              mode_rstable   = lv_mode
+              tabname        = lv_tabname
+              _scope         = lv_scope
+            EXCEPTIONS
+              foreign_lock   = 1
+              system_failure = 2
+              error_message  = 3
+              OTHERS         = 4.
+        ELSE.
+          CALL FUNCTION lv_fm
+            EXPORTING
+              mode_rstable   = lv_mode
+              tabname        = lv_tabname
+              varkey         = lv_varkey
+              _scope         = lv_scope
+            EXCEPTIONS
+              foreign_lock   = 1
+              system_failure = 2
+              error_message  = 3
+              OTHERS         = 4.
+        ENDIF.
+        DATA(subrc) = sy-subrc.
+        DATA(user) = CONV string( sy-msgv1 ).
+      CATCH cx_root INTO DATA(lx).
+        client->message_box_display( text = |Table { mv_table } could not be locked: { lx->get_text( ) }|
+                                     type = `error` ).
+        result = abap_false.
+        RETURN.
+    ENDTRY.
+
+    CASE subrc.
+      WHEN 0.
+      WHEN 1.
+        IF condense( user ) = condense( CONV string( sy-uname ) ).
+          " the own lock of another session: a second browser tab, or the
+          " session before a reload, which still runs until it times out
+          client->message_box_display( text = |Table { mv_table } is being edited in another session of yours (another browser tab or window). | &&
+                                              |Save or leave the table there - a closed session releases it when it times out.|
+                                       type = `error` ).
+        ELSE.
+          client->message_box_display( text = |Table { mv_table } is being edited by user { user }. Try again once that user has saved or left the table.|
+                                       type = `error` ).
+        ENDIF.
+        result = abap_false.
+      WHEN OTHERS.
+        client->message_box_display( text = |Table { mv_table } could not be locked - the lock server did not answer.|
+                                     type = `error` ).
+        result = abap_false.
+    ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD unlock.
+
+    DATA lv_fm      TYPE c LENGTH 30 VALUE `DEQUEUE_E_TABLE`.
+    DATA lv_mode    TYPE c LENGTH 1 VALUE `E`.
+    DATA lv_scope   TYPE c LENGTH 1 VALUE `1`.
+    DATA lv_tabname TYPE c LENGTH 30.
+    DATA lv_varkey  TYPE c LENGTH 250.
+
+    IF z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
+      RETURN.
+    ENDIF.
+
+    lv_tabname = mv_table.
+    IF line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
+      lv_varkey = sy-mandt.
+    ENDIF.
+
+    TRY.
+        IF lv_varkey IS INITIAL.
+          CALL FUNCTION lv_fm
+            EXPORTING
+              mode_rstable = lv_mode
+              tabname      = lv_tabname
+              _scope       = lv_scope
+            EXCEPTIONS
+              error_message = 1
+              OTHERS        = 2.
+        ELSE.
+          CALL FUNCTION lv_fm
+            EXPORTING
+              mode_rstable = lv_mode
+              tabname      = lv_tabname
+              varkey       = lv_varkey
+              _scope       = lv_scope
+            EXCEPTIONS
+              error_message = 1
+              OTHERS        = 2.
+        ENDIF.
+      CATCH cx_root ##NO_HANDLER.
+        " a lock that cannot be released goes with the session
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD edit_lock.
+
+    result = abap_true.
+    IF mv_lock_active = abap_true
+        OR ms_config-read_only = abap_true
+        OR z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
+      RETURN.
+    ENDIF.
+
+    result = lock( ).
+    IF result = abap_false.
+      RETURN.
+    ENDIF.
+
+    " a lock outlives the request only in a stateful session - kept until
+    " edit_unlock_if_idle, release_lock or the end of the session (browser
+    " closed, session timeout)
+    mv_lock_active = abap_true.
+    client->set_session_stateful( abap_true ).
+
+  ENDMETHOD.
+
+  METHOD edit_unlock_if_idle.
+
+    IF mv_change_active = abap_false AND mv_multi_edit = abap_false.
+      release_lock( ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD release_lock.
+
+    IF mv_lock_active = abap_false.
+      RETURN.
+    ENDIF.
+
+    unlock( ).
+    CLEAR mv_lock_active.
+    IF client IS BOUND.
+      client->set_session_stateful( abap_false ).
+    ENDIF.
 
   ENDMETHOD.
 
@@ -952,13 +1304,20 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " the row is shown in any case - read-only while another user edits
+    " the table (edit_lock has said who)
+    DATA(read_only) = ms_config-read_only.
+    IF read_only = abap_false AND edit_lock( ) = abap_false.
+      read_only = abap_true.
+    ENDIF.
+
     client->nav_app_call( z2ui5_cl_tm_pop=>factory( io_table     = mt_table
                                                     iv_row_id    = ls_arg
                                                     it_dfies     = mt_dfies
                                                     is_layout    = mo_layout
                                                     iv_edit_mode = abap_true
                                                     iv_tabname   = mv_table
-                                                    iv_read_only = ms_config-read_only ) ).
+                                                    iv_read_only = read_only ) ).
 
   ENDMETHOD.
 
@@ -1058,11 +1417,15 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BACK'.
 
+        release_lock( ).
         client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
 
       WHEN 'BUTTON_REFRESH'.
 
+        " the database state again - nothing left to save
         get_data( ).
+        CLEAR mv_change_active.
+        edit_unlock_if_idle( ).
 
       WHEN 'BUTTON_SEARCH'.
 
@@ -1082,7 +1445,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_ADD'.
 
-        IF check_change_allowed( ) = abap_false.
+        IF check_change_allowed( ) = abap_false OR edit_lock( ) = abap_false.
           RETURN.
         ENDIF.
 
@@ -1098,6 +1461,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         IF check_change_allowed( ) = abap_false.
           RETURN.
         ENDIF.
+        IF mv_multi_edit = abap_false AND edit_lock( ) = abap_false.
+          RETURN.
+        ENDIF.
 
         mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
         DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
@@ -1111,7 +1477,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " from mt_table_tmp, which would drop those changes
           ASSIGN mt_table->* TO FIELD-SYMBOL(<tab_edit>).
           ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<tab_edit_tmp>).
+          " a cell changed without a submit has not set mv_change_active
+          IF <tab_edit_tmp> <> <tab_edit>.
+            mv_change_active = abap_true.
+          ENDIF.
           <tab_edit_tmp> = <tab_edit>.
+          edit_unlock_if_idle( ).
         ENDIF.
 
         get_layout( ).
@@ -1591,6 +1962,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         ENDIF.
 
+        " cancelled, or shown read-only: no change - no lock needed
+        edit_unlock_if_idle( ).
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
