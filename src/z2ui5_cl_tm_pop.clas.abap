@@ -7,7 +7,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
 
     DATA ms_fixval   TYPE REF TO data.
     DATA ms_data_row TYPE REF TO data.
-    DATA mo_layout   TYPE REF TO z2ui5_cl_layo_manager. " Importing
+    " Importing
+    DATA mo_layout   TYPE REF TO z2ui5_cl_layo_manager.
     DATA mt_data     TYPE REF TO data.
     DATA mt_data_tmp TYPE REF TO data.
 
@@ -35,7 +36,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_shlpfield TYPE string.
 
     DATA mt_dfies     TYPE z2ui5_cl_tm_context=>ty_t_dfies.
-    DATA mv_tabname   TYPE string. " Importing
+    " Importing
+    DATA mv_tabname   TYPE string.
 
     METHODS on_init.
     METHODS render_popup.

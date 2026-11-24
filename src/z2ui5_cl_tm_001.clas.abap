@@ -179,7 +179,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       IF mv_multi_edit = abap_true.
         ASSIGN mt_table->* TO <tab>.
       ELSE.
-        ASSIGN mt_table_tmp->* TO <tab>. " Filter issue
+        " Filter issue
+        ASSIGN mt_table_tmp->* TO <tab>.
       ENDIF.
       ASSIGN mt_table_del->* TO <del>.
       ASSIGN mt_table_org->* TO <org>.
@@ -194,7 +195,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       DATA(keys_tmp) = get_keys( <org> ).
 
       LOOP AT keys_tmp INTO DATA(key_tmp).
-        IF line_exists(  keys[ key = key_tmp-key ] ).
+        IF line_exists( keys[ key = key_tmp-key ] ).
           DELETE keys_tmp USING KEY loop_key.
         ENDIF.
       ENDLOOP.
@@ -203,7 +204,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         FIELD-SYMBOLS <id> TYPE any.
         UNASSIGN <id>.
         ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
-        IF line_exists(  keys_tmp[ row_id = <id> ] ).
+        IF line_exists( keys_tmp[ row_id = <id> ] ).
           APPEND <line> TO <del>.
         ENDIF.
       ENDLOOP.
@@ -480,6 +481,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         SELECT *
           FROM (mv_table)
+          ORDER BY PRIMARY KEY
           INTO CORRESPONDING FIELDS OF TABLE @<table>.
 
         SORT <table>.
@@ -493,8 +495,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
     ASSIGN mt_table_org->* TO FIELD-SYMBOL(<mt_table_org>).
 
-    <mt_table_tmp> = <table>.  " For Filter etc.
-    <mt_table_org> = <table>.  " For DB alignment bevore Save
+    " For Filter etc.
+    <mt_table_tmp> = <table>.
+    " For DB alignment before Save
+    <mt_table_org> = <table>.
   ENDMETHOD.
 
   METHOD get_dfies.
@@ -708,7 +712,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                        )->a( n = `xmlns:core` v = `sap.ui.core`
                        )->a( n = `xmlns:table` v = `sap.ui.table`
                        )->a( n = `displayBlock` v = `true`
-                       )->a( n = `height` v = `100%` ). "->shell( ).
+                       )->a( n = `height` v = `100%` ).
 
       IF client->get( )-check_launchpad_active = abap_true.
 
