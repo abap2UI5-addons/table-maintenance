@@ -16,7 +16,10 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mv_search_value TYPE string.
     DATA mt_table        TYPE REF TO data.
     DATA mt_table_tmp    TYPE REF TO data.
-    DATA mt_table_del    TYPE REF TO data.
+    " the rows as in the database (read, or written by the last successful
+    " save), key fields only: save deletes the keys that are no longer in
+    " the table - the other columns are not needed for that, and the app
+    " state is serialized on every roundtrip
     DATA mt_table_org    TYPE REF TO data.
     " the table name typed in when the app was started without one
     DATA mv_table_input  TYPE string.
@@ -87,6 +90,20 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     METHODS get_comp
       RETURNING
         VALUE(result) TYPE abap_component_tab.
+
+    "! The components of the database snapshot mt_table_org: the key fields
+    "! of t_comp - needs mt_dfies, so get_dfies runs before get_data
+    METHODS get_comp_key
+      IMPORTING
+        t_comp        TYPE abap_component_tab
+      RETURNING
+        VALUE(result) TYPE abap_component_tab.
+
+    "! The database snapshot mt_table_org from the rows of a table that is
+    "! the database state now - after the read and after a successful save
+    METHODS set_snapshot
+      IMPORTING
+        !table TYPE STANDARD TABLE.
 
     METHODS render_main_footer
       IMPORTING
@@ -160,12 +177,13 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     DATA t_table     TYPE REF TO data.
     DATA t_table_del TYPE REF TO data.
+    DATA key_set     TYPE HASHED TABLE OF string WITH UNIQUE KEY table_line.
 
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
-    FIELD-SYMBOLS <del>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <org>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_org> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <del_org> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <del>     TYPE any.
 
     IF ms_transport IS INITIAL.
 
@@ -182,43 +200,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         " Filter issue
         ASSIGN mt_table_tmp->* TO <tab>.
       ENDIF.
-      ASSIGN mt_table_del->* TO <del>.
       ASSIGN mt_table_org->* TO <org>.
-
-      " the delete buffer is rebuilt from <org> on every save - a save that
-      " stopped early (duplicate key, transport error) left its rows in it, and
-      " the next save appended them a second time
-      CLEAR <del>.
-
-      " Compare all Key entries with the TMP. All entries that are not present are deleted.
-      DATA(keys) = get_keys( <tab> ).
-      DATA(keys_tmp) = get_keys( <org> ).
-
-      LOOP AT keys_tmp INTO DATA(key_tmp).
-        IF line_exists( keys[ key = key_tmp-key ] ).
-          DELETE keys_tmp USING KEY loop_key.
-        ENDIF.
-      ENDLOOP.
-
-      LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line>).
-        FIELD-SYMBOLS <id> TYPE any.
-        UNASSIGN <id>.
-        ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
-        IF line_exists( keys_tmp[ row_id = <id> ] ).
-          APPEND <line> TO <del>.
-        ENDIF.
-      ENDLOOP.
-
-      " two rows with the same key cannot be saved
-      SORT keys BY key ASCENDING.
-      keys_tmp = keys.
-      DELETE ADJACENT DUPLICATES FROM keys COMPARING key.
-      IF lines( keys ) <> lines( keys_tmp ).
-        client->message_box_display( text = `Two or more entries have the same key.`
-                                     type = `error` ).
-
+      IF <tab> IS NOT ASSIGNED OR <org> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
+
+      " two rows with the same key cannot be saved
+      DATA(keys) = get_keys( <tab> ).
+      LOOP AT keys INTO DATA(key).
+        INSERT key-key INTO TABLE key_set.
+        IF sy-subrc <> 0.
+          client->message_box_display( text = `Two or more entries have the same key.`
+                                       type = `error` ).
+          RETURN.
+        ENDIF.
+      ENDLOOP.
 
       DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
@@ -232,17 +228,31 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           CREATE DATA t_table     TYPE HANDLE table_desc.
           CREATE DATA t_table_del TYPE HANDLE table_desc.
 
-          ASSIGN t_table->* TO <tab_org>.
-          ASSIGN t_table_del->* TO <del_org>.
-
-          copy_corresponding( EXPORTING it_source = <del>
-                              CHANGING  ct_target = <del_org> ).
-          copy_corresponding( EXPORTING it_source = <tab>
-                              CHANGING  ct_target = <tab_org> ).
-
-        CATCH cx_root ##NO_HANDLER.
-
+        CATCH cx_root INTO DATA(lx_type).
+          client->message_box_display( text = lx_type->get_text( )
+                                       type = `error` ).
+          RETURN.
       ENDTRY.
+
+      ASSIGN t_table->* TO <tab_org>.
+      ASSIGN t_table_del->* TO <del_org>.
+
+      copy_corresponding( EXPORTING it_source = <tab>
+                          CHANGING  ct_target = <tab_org> ).
+
+      " the rows deleted since the last successful save or refresh: the keys
+      " of the snapshot that are no longer in the table. Built anew on every
+      " attempt - a refused save neither loses nor doubles them, and nothing
+      " outside this save ever sees deletions that were not executed
+      DATA(keys_org) = get_keys( <org> ).
+      LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line_org>).
+        READ TABLE keys_org INTO DATA(key_org) INDEX sy-tabix.
+        IF sy-subrc = 0 AND NOT line_exists( key_set[ table_line = key_org-key ] ).
+          " key fields only - enough for the DELETE and the transport keys
+          APPEND INITIAL LINE TO <del_org> ASSIGNING <del>.
+          MOVE-CORRESPONDING <line_org> TO <del>.
+        ENDIF.
+      ENDLOOP.
 
       TRY.
 
@@ -268,7 +278,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           " deletions and writes are one LUW, committed once both went through:
           " a deletion committed on its own could not be rolled back when the
           " write after it failed
-          IF <del> IS NOT INITIAL.
+          IF <del_org> IS NOT INITIAL.
             " sy-subrc 4 only means a row was no longer in the database
             DELETE (mv_table) FROM TABLE @<del_org>.
           ENDIF.
@@ -287,10 +297,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             z2ui5_cl_tm_context=>db_reset_table_buffer( mv_table ).
 
             " what was saved is the database state the next save compares
-            " against - with the state of the first read, a row added, saved,
-            " deleted and saved again was never deleted
-            <org> = <tab>.
-            CLEAR <del>.
+            " against - the deletions are done, rows added since can be
+            " deleted later
+            set_snapshot( <tab> ).
 
             ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'i18n'
                                                     no = `002` ).
@@ -316,7 +325,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDTRY.
 
     ENDIF.
-
 
   ENDMETHOD.
 
@@ -357,13 +365,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD transport_all.
 
-    DATA t_table     TYPE REF TO data.
-    DATA t_table_del TYPE REF TO data.
+    DATA t_table TYPE REF TO data.
 
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
-    FIELD-SYMBOLS <del>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_org> TYPE STANDARD TABLE.
-    FIELD-SYMBOLS <del_org> TYPE STANDARD TABLE.
 
     IF ms_transport IS INITIAL.
 
@@ -385,7 +390,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ELSE.
         ASSIGN mt_table_tmp->* TO <tab>.
       ENDIF.
-      ASSIGN mt_table_del->* TO <del>.
 
       DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
@@ -396,14 +400,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           DATA(table_desc) = cl_abap_tabledescr=>create( p_line_type  = struct_desc
                                                          p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
-          CREATE DATA t_table     TYPE HANDLE table_desc.
-          CREATE DATA t_table_del TYPE HANDLE table_desc.
+          CREATE DATA t_table TYPE HANDLE table_desc.
 
           ASSIGN t_table->* TO <tab_org>.
-          ASSIGN t_table_del->* TO <del_org>.
 
-          copy_corresponding( EXPORTING it_source = <del>
-                              CHANGING  ct_target = <del_org> ).
           copy_corresponding( EXPORTING it_source = <tab>
                               CHANGING  ct_target = <tab_org> ).
 
@@ -411,11 +411,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       ENDTRY.
       TRY.
+          " the entries of the table only - deletions reach the transport
+          " with the save that executes them; pending ones are not in the
+          " database, and a request must not delete what is still there
           z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
-                                                      iv_tabname   = mv_table
-                                                      is_transport = ms_transport ).
-
-          z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table_del
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
 
@@ -473,9 +472,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA mt_table     TYPE HANDLE new_table_desc.
-        CREATE DATA mt_table_del TYPE HANDLE new_table_desc.
         CREATE DATA mt_table_tmp TYPE HANDLE new_table_desc.
-        CREATE DATA mt_table_org TYPE HANDLE new_table_desc.
+
+        DATA(key_struct_desc) = cl_abap_structdescr=>create( get_comp_key( t_comp ) ).
+
+        DATA(key_table_desc) = cl_abap_tabledescr=>create( p_line_type  = key_struct_desc
+                                                           p_table_kind = cl_abap_tabledescr=>tablekind_std ).
+
+        CREATE DATA mt_table_org TYPE HANDLE key_table_desc.
 
         ASSIGN mt_table->* TO <table>.
 
@@ -490,15 +494,43 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     ENDTRY.
 
+    IF <table> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
     set_row_id( ).
 
     ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
-    ASSIGN mt_table_org->* TO FIELD-SYMBOL(<mt_table_org>).
 
     " For Filter etc.
     <mt_table_tmp> = <table>.
     " For DB alignment before Save
-    <mt_table_org> = <table>.
+    set_snapshot( <table> ).
+  ENDMETHOD.
+
+  METHOD get_comp_key.
+
+    LOOP AT t_comp INTO DATA(comp).
+      IF line_exists( mt_dfies[ fieldname = comp-name
+                                keyflag   = abap_true ] ).
+        APPEND comp TO result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD set_snapshot.
+
+    FIELD-SYMBOLS <org> TYPE STANDARD TABLE.
+
+    ASSIGN mt_table_org->* TO <org>.
+    IF <org> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
+    copy_corresponding( EXPORTING it_source = table
+                        CHANGING  ct_target = <org> ).
+
   ENDMETHOD.
 
   METHOD get_dfies.
@@ -535,9 +567,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD on_init.
     get_table_name( ).
 
-    get_data( ).
-
+    " before get_data - the key fields of the snapshot come from mt_dfies
     get_dfies( ).
+
+    get_data( ).
 
     get_layout( ).
 
