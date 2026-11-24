@@ -70,10 +70,24 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS render_popup.
     METHODS on_event.
 
+    "! A text of data element roll - or fallback where the data element is
+    "! not on the system or has no text
     METHODS get_txt
       IMPORTING
         roll          TYPE clike
-        !type         TYPE clike OPTIONAL
+        !type         TYPE clike  OPTIONAL
+        fallback      TYPE string OPTIONAL
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! The text of message no of class id - or fallback where the message
+    "! class or number is not on the system (a missing message answers with
+    "! its own class and number, or nothing)
+    METHODS get_msg
+      IMPORTING
+        !id           TYPE clike
+        !no           TYPE clike
+        fallback      TYPE string
       RETURNING
         VALUE(result) TYPE string.
 
@@ -225,8 +239,8 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                       )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
     DATA(title) = COND #( WHEN mv_read_only = abap_true THEN `Display`
-                          WHEN mv_edit = abap_true THEN get_txt( 'CRMST_UIU_EDIT' )
-                          ELSE get_txt( 'RSLPO_GUI_ADDPART' ) ).
+                          WHEN mv_edit = abap_true THEN get_txt( roll = 'CRMST_UIU_EDIT' fallback = `Edit` )
+                          ELSE get_txt( roll = 'RSLPO_GUI_ADDPART' fallback = `Add` ) ).
 
     DATA(dialog) = popup->ele( `Dialog`
                           )->a( n = `title` t = title
@@ -343,12 +357,11 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(toolbar) = dialog->ele( `buttons` ).
 
-    DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'PRC_PRI'
-                                                  no = `512` ).
     " MESSAGE s512(prc_pri) INTO DATA(msg).
-
     toolbar->tag( `Button`
-        )->a( n = `text` t = ls_msg-text
+        )->a( n = `text` t = get_msg( id       = 'PRC_PRI'
+                                      no       = `512`
+                                      fallback = `Cancel` )
         )->a( n = `press` v = client->_event( 'POPUP_CLOSE' ) ).
 
     IF mv_read_only = abap_true.
@@ -357,34 +370,31 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     IF mv_edit = abap_true.
 
-      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'ISLM_DI_GEN'
-                                              no = `160` ).
       "  MESSAGE s160(islm_di_gen) INTO msg.
-
       toolbar->tag( `Button`
-          )->a( n = `text` t = ls_msg-text
+          )->a( n = `text` t = get_msg( id       = 'ISLM_DI_GEN'
+                                        no       = `160`
+                                        fallback = `Delete` )
           )->a( n = `type` v = 'Reject'
           )->a( n = `icon` v = 'sap-icon://delete'
           )->a( n = `press` v = client->_event( val = 'POPUP_DELETE' ) ).
 
-      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'cnv_iuuc_replication'
-                                              no = `229` ).
-      " MESSAGE s229(cnv_iuuc_replication) INTO msg.
-
       IF mv_copy = abap_true.
+        " MESSAGE s229(cnv_iuuc_replication) INTO msg.
         toolbar->tag( `Button`
-            )->a( n = `text` t = ls_msg-text
+            )->a( n = `text` t = get_msg( id       = 'cnv_iuuc_replication'
+                                          no       = `229`
+                                          fallback = `Copy` )
             )->a( n = `icon` v = 'sap-icon://copy'
             )->a( n = `press` v = client->_event( val = 'POPUP_COPY' ) ).
       ENDIF.
     ENDIF.
 
-    ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'fsl_utilities'
-                                            no = `020` ).
     " MESSAGE s020(fsl_utilities) INTO msg.
-
     toolbar->tag( `Button`
-        )->a( n = `text` t = ls_msg-text
+        )->a( n = `text` t = get_msg( id       = 'fsl_utilities'
+                                      no       = `020`
+                                      fallback = `OK` )
         )->a( n = `press` v = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
         )->a( n = `type` v = 'Emphasized' ).
 
@@ -488,20 +498,45 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   METHOD get_txt.
 
-    DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
+    TRY.
+        DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
-    CASE type.
-      WHEN 'L'.
-        result = texts-long.
-      WHEN 'M'.
-        result = texts-medium.
-      WHEN 'S'.
-        result = texts-short.
-      WHEN 'H'.
-        result = texts-header.
-      WHEN OTHERS.
-        result = texts-short.
-    ENDCASE.
+        CASE type.
+          WHEN 'L'.
+            result = texts-long.
+          WHEN 'M'.
+            result = texts-medium.
+          WHEN 'S'.
+            result = texts-short.
+          WHEN 'H'.
+            result = texts-header.
+          WHEN OTHERS.
+            result = texts-short.
+        ENDCASE.
+
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+    IF result IS INITIAL.
+      result = fallback.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_msg.
+
+    TRY.
+        result = z2ui5_cl_tm_context=>msg_get_by_msg( id = id
+                                                      no = no )-text.
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+    IF result IS INITIAL
+        OR ( to_upper( result ) CS to_upper( id ) AND result CS no ).
+      result = fallback.
+    ENDIF.
 
   ENDMETHOD.
 

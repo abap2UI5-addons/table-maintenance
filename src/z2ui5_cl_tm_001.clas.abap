@@ -78,10 +78,14 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS render_main.
 
+    "! A text of data element roll - or fallback where the data element is
+    "! not on the system or has no text (an EWM or S/4HANA system may lack
+    "! the data elements the texts are borrowed from)
     METHODS get_txt
       IMPORTING
         roll          TYPE string
-        !type         TYPE clike OPTIONAL
+        !type         TYPE clike  OPTIONAL
+        fallback      TYPE string OPTIONAL
       RETURNING
         VALUE(result) TYPE string.
 
@@ -198,20 +202,29 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_txt.
 
-    DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
+    TRY.
+        DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
-    CASE type.
-      WHEN 'L'.
-        result = texts-long.
-      WHEN 'M'.
-        result = texts-medium.
-      WHEN 'S'.
-        result = texts-short.
-      WHEN 'H'.
-        result = texts-header.
-      WHEN OTHERS.
-        result = texts-short.
-    ENDCASE.
+        CASE type.
+          WHEN 'L'.
+            result = texts-long.
+          WHEN 'M'.
+            result = texts-medium.
+          WHEN 'S'.
+            result = texts-short.
+          WHEN 'H'.
+            result = texts-header.
+          WHEN OTHERS.
+            result = texts-short.
+        ENDCASE.
+
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+    IF result IS INITIAL.
+      result = fallback.
+    ENDIF.
 
   ENDMETHOD.
 
@@ -486,17 +499,17 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
                                                       is_transport = ms_transport ).
 
         CATCH cx_root.
-          DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = '42'
-                                                        no = `316` ).
-
           " MESSAGE e316(42) INTO DATA(msg).  " Transport request error
-          client->message_toast_display( ls_msg-text ).
+          client->message_toast_display( get_msg( id       = '42'
+                                                  no       = `316`
+                                                  fallback = `Transport request error` ) ).
           RETURN.
       ENDTRY.
-      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'rmps_general'
-                                              no = `215` ).
       " MESSAGE s215(rmps_general) WITH ms_transport-transport INTO msg. "Transporteintrag erfolgreich geschrieben (&1)
-      client->message_toast_display( ls_msg-text ).
+      client->message_toast_display( get_msg( id       = 'rmps_general'
+                                              no       = `215`
+                                              v1       = ms_transport-transport
+                                              fallback = |Transport entries written ({ ms_transport-transport })| ) ).
 
     ENDIF.
   ENDMETHOD.
@@ -854,12 +867,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     IF mv_multi_edit = abap_true AND ms_config-read_only = abap_false.
       footer->tag( `Button`
-          )->a( n = `text` v = get_txt( 'MLCCS_D_XDELETE' )
+          )->a( n = `text` v = get_txt( roll = 'MLCCS_D_XDELETE' fallback = `Delete` )
           )->a( n = `type` v = 'Reject'
           )->a( n = `icon` v = 'sap-icon://delete'
           )->a( n = `press` v = client->_event( val = 'BUTTON_DELETE' )
           )->tag( `Button`
-          )->a( n = `text` v = get_txt( '/SCMTMS/COCO_COPY_IND' )
+          )->a( n = `text` v = get_txt( roll = '/SCMTMS/COCO_COPY_IND' fallback = `Copy` )
           )->a( n = `icon` v = 'sap-icon://copy'
           )->a( n = `press` v = client->_event( val = 'BUTTON_COPY' ) ).
     ENDIF.
@@ -869,7 +882,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       " table or a transport request
       footer->tag( `Button`
           )->a( n = `icon` v = 'sap-icon://refresh'
-          )->a( n = `text` v = get_txt( 'REFRESH_F8' )
+          )->a( n = `text` v = get_txt( roll = 'REFRESH_F8' fallback = `Refresh` )
           )->a( n = `press` v = client->_event( 'BUTTON_REFRESH' )
           )->a( n = `type` v = 'Default' ).
       render_main_display( page ).
@@ -878,17 +891,17 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     footer->tag( `Button`
         )->a( n = `icon` v = 'sap-icon://add'
-        )->a( n = `text` v = get_txt( 'RSLPO_GUI_ADDPART' )
+        )->a( n = `text` v = get_txt( roll = 'RSLPO_GUI_ADDPART' fallback = `Add` )
         )->a( n = `press` v = client->_event( 'BUTTON_ADD' )
         )->a( n = `type` v = 'Default'
         )->tag( `Button`
         )->a( n = `icon` v = 'sap-icon://refresh'
-        )->a( n = `text` v = get_txt( 'REFRESH_F8' )
+        )->a( n = `text` v = get_txt( roll = 'REFRESH_F8' fallback = `Refresh` )
         )->a( n = `press` v = client->_event( 'BUTTON_REFRESH' )
         )->a( n = `type` v = 'Default'
         )->tag( `Button`
         )->a( n = `enabled` v = client->_bind( mv_change_active )
-        )->a( n = `text` v = get_txt( 'SICHERN' )
+        )->a( n = `text` v = get_txt( roll = 'SICHERN' fallback = `Save` )
         )->a( n = `press` v = client->_event( 'BUTTON_SAVE' )
         )->a( n = `type` v = 'Success' ).
 
@@ -898,15 +911,15 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         )->ele( `Menu`
         )->tag( `MenuItem`
         )->a( n = `icon`  v = 'sap-icon://shipping-status'
-        )->a( n = `text`  v = get_txt( 'ALLES_FUB' )
+        )->a( n = `text`  v = get_txt( roll = 'ALLES_FUB' fallback = `Transport All Entries` )
         )->a( n = `press` v = client->_event( 'TRANSPORT_ALL' )
         )->tag( `MenuItem`
         )->a( n = `icon`  v = 'sap-icon://shipping-status'
-        )->a( n = `text`  v = get_txt( 'FUNCCHANGE' )
+        )->a( n = `text`  v = get_txt( roll = 'FUNCCHANGE' fallback = `Change Transport Request` )
         )->a( n = `press` v = client->_event( 'TRANSPORT_CHANGE' )
         )->tag( `MenuItem`
         )->a( n = `icon`  v = 'sap-icon://key-user-settings'
-        )->a( n = `text`  v = get_txt( 'POWL_ADMIN_TY' )
+        )->a( n = `text`  v = get_txt( roll = 'POWL_ADMIN_TY' fallback = `Multi-Edit` )
         )->a( n = `press` v = client->_event( 'BUTTON_EDIT' ) ).
 
     render_main_display( page ).
