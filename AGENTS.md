@@ -14,7 +14,7 @@ and CI gates every change. It is installed with abapGit and depends on the
 
 | Path | Contents |
 | --- | --- |
-| `src/` | The maintenance app (`z2ui5_cl_tm_001`), its popup (`z2ui5_cl_tm_pop`) and the interface they share (`z2ui5_if_tm_001`) |
+| `src/` | The maintenance app (`z2ui5_cl_tm_001`), its popup (`z2ui5_cl_tm_pop`), the view cluster that embeds it once per table (`z2ui5_cl_tm_002`) and the interface between them (`z2ui5_if_tm_001`) |
 | `src/z2ui5_cl_tm_context`, `src/z2ui5_cx_tm_error` | Utility context and its exception — **vendored copies from abap-util, see below** |
 
 `z2ui5_if_tm_001~mo_parent_view` is the embedding contract: a view cluster hands

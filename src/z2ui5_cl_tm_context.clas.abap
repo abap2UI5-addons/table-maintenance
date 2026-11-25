@@ -202,6 +202,22 @@ CLASS z2ui5_cl_tm_context DEFINITION
         long   TYPE string,
       END OF ty_s_data_element_text.
 
+    "! Reset the table buffer of a database table on the application server,
+    "! so a buffered customizing table shows a change at once and not only
+    "! after the buffer synchronisation. Nothing happens on ABAP Cloud, which
+    "! has no SBUF_GENERIC_RESET, nor for an unbuffered table.
+    "! @parameter val | the database table
+    CLASS-METHODS db_reset_table_buffer
+      IMPORTING
+        val TYPE clike.
+
+    CLASS-METHODS rtti_get_table_desrc
+      IMPORTING
+        tabname       TYPE clike
+        langu         TYPE clike OPTIONAL
+      RETURNING
+        VALUE(result) TYPE string ##NEEDED.
+
     CLASS-METHODS check_abap_cloud
       RETURNING
         VALUE(result) TYPE abap_bool.
@@ -703,7 +719,9 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
             IMPORTING
               output   = value
             EXCEPTIONS
-              OTHERS   = 99.
+              " a MESSAGE TYPE E of the exit ends the request without it
+              error_message = 98
+              OTHERS        = 99.
 
         ELSE.
 
@@ -713,8 +731,15 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
             IMPORTING
               output = value
             EXCEPTIONS
-              OTHERS = 99.
+              error_message = 98
+              OTHERS        = 99.
 
+        ENDIF.
+
+        IF sy-subrc <> 0.
+          " the exit refused the value (MESSAGE ... RAISING, or a plain
+          " MESSAGE TYPE E) - it stays as it was
+          RETURN.
         ENDIF.
 
       CATCH cx_root ##NO_HANDLER.
@@ -930,6 +955,71 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
       v3         = v3
       v4         = v4 ).
     result = msg_get( ls_msg ).
+
+  ENDMETHOD.
+
+  METHOD db_reset_table_buffer.
+
+    DATA lv_fm      TYPE c LENGTH 30 VALUE `SBUF_GENERIC_RESET`.
+    DATA lv_tabname TYPE c LENGTH 30.
+
+    IF check_abap_cloud( ) = abap_true.
+      RETURN.
+    ENDIF.
+
+    lv_tabname = val.
+    " called by name, so the class compiles where the module does not exist
+    TRY.
+        CALL FUNCTION lv_fm
+          EXPORTING
+            sync    = abap_true
+            tabname = lv_tabname
+          EXCEPTIONS
+            OTHERS  = 1.
+        IF sy-subrc <> 0.
+          " the reset is best effort - the buffer synchronises itself later
+          RETURN.
+        ENDIF.
+      CATCH cx_root ##NO_HANDLER.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD rtti_get_table_desrc.
+
+    DATA ddtext TYPE c LENGTH 60.
+
+    IF langu IS NOT SUPPLIED.
+      DATA(lan) = sy-langu.
+    ELSE.
+      lan = langu.
+    ENDIF.
+
+    IF check_abap_cloud( ).
+
+      ddtext = tabname.
+
+    ELSE.
+
+      TRY.
+          DATA(lv_tabname) = `dd02t`.
+          SELECT SINGLE ddtext
+            FROM (lv_tabname)
+            WHERE tabname    = @tabname
+              AND ddlanguage = @lan
+            INTO @ddtext.
+        CATCH cx_root ##NO_HANDLER.
+          " DD02T not available (e.g. JS transpiler runtime) - fall
+          " back to the table name below
+      ENDTRY.
+
+    ENDIF.
+
+    IF ddtext IS NOT INITIAL.
+      result = ddtext.
+    ELSE.
+      result = tabname.
+    ENDIF.
 
   ENDMETHOD.
 

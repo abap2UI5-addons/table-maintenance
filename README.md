@@ -34,8 +34,11 @@ Good for:
 
 - **Customizing and Z tables** that need a quick maintenance screen.
 - **ABAP Cloud systems** without SM30.
-- **Embedding** - a view cluster can render the app into its own page through
-  the interface `z2ui5_if_tm_001`.
+- **Several tables on one page** - the view cluster `z2ui5_cl_tm_002` shows a
+  tab per table and the maintenance of the selected one below it, with one
+  transport request for all of them.
+- **Embedding** - an app of your own can render the maintenance into its page
+  through the interface `z2ui5_if_tm_001`, the way `z2ui5_cl_tm_002` does.
 
 To only look into a table, without changing it, use
 [abap2UI5-addons/se16n](https://github.com/abap2UI5-addons/se16n).
@@ -70,7 +73,44 @@ URL parameter `table`:
 ```
 
 Without the parameter (and without a launchpad startup parameter `table`) the
-app opens no table; it asks for the table name first.
+app opens no table; it asks for the table name first. Add `&readonly=X` (URL
+or launchpad startup parameter) to show the table without any way to change
+it.
+
+From an app of your own, start it with the factory - the table, and
+optionally a configuration (`z2ui5_if_tm_001=>ty_s_config`):
+
+```abap
+client->nav_app_call( z2ui5_cl_tm_001=>factory(
+    i_table  = `ZMY_TABLE`
+    i_config = VALUE #( read_only       = abap_false
+                        layout_handle04 = lv_org_unit ) ) ).
+```
+
+- `read_only` - display only: no Add, Copy, Delete, multi-edit, Save or
+  transport, and the row popup opens with every input disabled. The URL
+  parameter `readonly` can only switch it on, never off.
+- `layout_handle04` - the fourth key of the saved column layouts. The layouts
+  of layout-management are stored under `handle01` = the class name
+  (`Z2UI5_CL_TM_001`, or its renamed name), `handle02` = the table,
+  `handle03` = `SIMPLE_VIEW` and `handle04` = this value - e.g. an
+  organisational unit, so that each one keeps layouts of its own. Empty (the
+  default): one set of layouts per table, as before.
+
+The row popup `z2ui5_cl_tm_pop` can be called on its own as well, with a
+table that has a component `ROW_ID` and the DFIES of the fields to show -
+`z2ui5_cl_tm_pop=>factory( io_table = REF #( lt_rows ) iv_row_id = ...
+it_dfies = ... iv_edit_mode = abap_true iv_tabname = ... )`, optionally
+`is_layout`, `iv_copy_mode`, `iv_read_only`; read the result back from its
+`mt_data` once the popup returned.
+
+For **several tables on one page**, start the view cluster `z2ui5_cl_tm_002`
+with a comma-separated list of tables and an optional page title - as URL
+parameters or launchpad startup parameters of the same names:
+
+```
+?app_start=z2ui5_cl_tm_002&tables=<TABLE_1>,<TABLE_2>&title=<TITLE>
+```
 
 ### Parallel installation (namespace rename)
 
@@ -96,6 +136,52 @@ of the installation with the same name.
    been chosen yet, a popup asks for one first; the menu also records all
    entries on a transport request or changes the request.
 
+### Saving, transport and locking
+
+- **One LUW.** Save writes the database first - the deleted rows, then the
+  rows of the table - and records the rows and the deletions on the transport
+  request after that, with one `COMMIT WORK` for both. A database error rolls
+  everything back and records nothing; a transport error after the database
+  write rolls the database changes back as well. Either way the message says
+  that nothing was saved, and the changes stay on the screen.
+- **Deletions are computed per save** from the keys read from the database
+  and the rows on the screen. A save that is refused keeps them pending, the
+  next one executes them; **Transport all entries** records the rows of the
+  table only, never a deletion that was not saved.
+- **Lock while editing** (Standard ABAP). The first change - **Add**, a row
+  opened for editing, the switch to multi-edit - locks the table with
+  `ENQUEUE_E_TABLE` (the table name and, for a client-dependent table, the
+  logon client) and switches the abap2UI5 session to stateful
+  (`client->set_session_stateful`), so the lock outlives the request. Another
+  user who starts a change gets a message with your user name; a row they
+  open is shown read-only. The lock is released, and the session made
+  stateless again, as soon as nothing is left to save (after a save outside
+  multi-edit, a refresh, a cancelled popup, leaving multi-edit without
+  changes), on a tab change in `z2ui5_cl_tm_002`, and with the session
+  itself when the browser is closed or the session times out. The page has
+  no back button of its own: a launchpad back or home with unsaved changes
+  keeps the lock until the session times out. An app that embeds the
+  maintenance and drops the instance releases the lock with
+  `release_lock( client )` of `z2ui5_if_tm_001`, the way `z2ui5_cl_tm_002`
+  does on a tab change.
+- **The save checks again**, whatever happened to the session: it takes the
+  lock for its own request and compares the database with what was read (the
+  key and a hash of every row). Rows added, changed or deleted by someone
+  else since the read are not overwritten - the save is refused with a
+  message, and a refresh shows the current entries.
+
+Limits: the lock is the app's own whole-table lock - it keeps two users of
+this app (and tools that lock the whole table with `E_TABLE`) apart, not a
+program that writes the table without locking it; the optimistic check
+covers that case at save time. A stateful session holds a work process per
+editing user while the lock is held. A page reloaded while it holds a lock
+leaves the lock to the old session until that session ends - the message
+then says it is your own lock in another session. ABAP Cloud has no
+`E_TABLE` lock object: there the app takes no lock and stays stateless, and
+the optimistic check alone protects the save. The check reads the whole
+table before and after each save, which is meant for customizing-sized
+tables.
+
 ### Edit entries
 <img width="700" alt="Popup to edit an entry with value help" src="https://github.com/user-attachments/assets/3dc1de8d-4025-48c0-9372-79fd20c4279c">
 
@@ -104,7 +190,59 @@ of the installation with the same name.
 * Add, edit, copy and delete entries of any database table
 * Value help from check tables, fixed values and search helps
 * Column layouts saved as variants (layout-management)
-* Changes recorded on a transport request
+* Changes recorded on a transport request, in one LUW with the database
+  changes
+* Edit lock with the name of the user who holds it, and an optimistic check
+  before each save (see [Saving, transport and locking](#saving-transport-and-locking))
+* Read-only mode (`readonly=X` or the factory configuration)
+* Texts borrowed from SAP data elements and message classes, with an English
+  fallback where a system lacks them (EWM, S/4HANA)
+* Several tables on one page (`z2ui5_cl_tm_002`): a tab per table with its
+  number of entries, one transport request handed on from table to table, and
+  a confirmation before a tab change would discard unsaved changes
+* After saving, the table buffer of a buffered table is reset
+  (`SBUF_GENERIC_RESET`), so the change shows at once - Standard ABAP only,
+  ABAP Cloud has no table buffer reset
+
+## Commits
+
+The abap2UI5 addons (layout-management, popups, table-maintenance) share one
+commit model:
+
+- **The addon commits only in its own apps.** A popup or app of the addon
+  that saves on a button of its own runs in a roundtrip of its own and ends
+  its own LUW - `COMMIT WORK AND WAIT`, or `ROLLBACK WORK` on failure.
+- **A library method commits only with `iv_commit = abap_true`.** Every
+  public method that writes on behalf of its caller takes
+  `iv_commit TYPE abap_bool DEFAULT abap_true`. The default keeps the old
+  behaviour: the method ends with `COMMIT WORK AND WAIT` - and so commits
+  whatever the caller has open at that moment as well. With
+  `iv_commit = abap_false` it neither commits nor rolls back: its writes join
+  the caller's LUW, and the caller commits them once, together with its own
+  changes.
+- **On failure the method raises its exception.** With
+  `iv_commit = abap_false` it never runs `ROLLBACK WORK` - whatever it wrote
+  before the failure is still in the caller's LUW, and the caller decides,
+  normally with `ROLLBACK WORK`. With `iv_commit = abap_true` it fails as it
+  always did (the table below).
+- **The caller must commit.** abap2UI5 runs `ROLLBACK WORK` before and after
+  `main( )` of a stateless app, so what an app writes - itself, or through a
+  method called with `iv_commit = abap_false` - is lost unless the app commits
+  it in the same roundtrip.
+
+In this addon:
+
+| Where | Commits | On failure |
+|---|---|---|
+| Library methods | none - no public method of this addon writes to the database (`release_lock( )` of `z2ui5_if_tm_001` only releases the lock) | - |
+| **Save** in `z2ui5_cl_tm_001` - its own app | always: the rows, the deletions and the transport entries with one `COMMIT WORK AND WAIT` (popups' `add_data_to_tranport( )` called with `iv_commit = abap_false`) | `ROLLBACK WORK` of all of it and a message, see [Saving, transport and locking](#saving-transport-and-locking) |
+| **Transport all entries** in `z2ui5_cl_tm_001` - its own app | always: `add_data_to_tranport( )` with its default `iv_commit = abap_true`, in a roundtrip that writes nothing else | a message toast, nothing committed |
+| Layout settings (layout-management's popup) | Save and Delete of a layout, the popup's own app | see layout-management |
+
+An app that embeds the maintenance (`mo_parent_view`, as `z2ui5_cl_tm_002`
+does) runs it inside its own `main( )`: the maintenance commits only in the
+roundtrips of its own **Save** and **Transport** buttons, and an embedder that
+has changes of its own open in such a roundtrip has them committed with it.
 
 ## Security
 

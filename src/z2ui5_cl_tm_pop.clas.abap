@@ -7,19 +7,36 @@ CLASS z2ui5_cl_tm_pop DEFINITION
 
     DATA ms_fixval   TYPE REF TO data.
     DATA ms_data_row TYPE REF TO data.
-    DATA mo_layout   TYPE REF TO z2ui5_cl_layo_manager. " Importing
+    " Importing
+    DATA mo_layout   TYPE REF TO z2ui5_cl_layo_manager.
+    " the caller's table with the change of this popup - read it back once
+    " the popup returned; after a cancel it is the table as it came in
     DATA mt_data     TYPE REF TO data.
-    DATA mt_data_tmp TYPE REF TO data.
 
+    "! The popup for one row of a table - edit, add, copy, delete, display.
+    "! Read the table back from mt_data once the popup returned (the caller's
+    "! on navigated); after a cancel it is io_table as it came in.
+    "! @parameter io_table     | the rows - a standard table with a component
+    "!                           ROW_ID (z2ui5_cl_tm_001=>mc_row_id)
+    "! @parameter iv_row_id    | ROW_ID of the row to edit; empty: add a row
+    "! @parameter it_dfies     | the fields shown, in this order - leave out
+    "!                           what is not to be shown
+    "! @parameter is_layout    | the layout whose labels the fields take (the
+    "!                           data element of a field without one there)
+    "! @parameter iv_edit_mode | abap_true: edit iv_row_id, keys not editable
+    "! @parameter iv_copy_mode | offer Copy in edit mode (default abap_true)
+    "! @parameter iv_tabname   | the table for the value helps
+    "! @parameter iv_read_only | display only: every input disabled, only Close
     CLASS-METHODS factory
       IMPORTING
         io_table      TYPE REF TO data
         iv_row_id     TYPE string
         it_dfies      TYPE z2ui5_cl_tm_context=>ty_t_dfies
-        is_layout     TYPE REF TO z2ui5_cl_layo_manager
+        is_layout     TYPE REF TO z2ui5_cl_layo_manager OPTIONAL
         iv_edit_mode  TYPE abap_bool
         iv_copy_mode  TYPE abap_bool OPTIONAL
         iv_tabname    TYPE string
+        iv_read_only  TYPE abap_bool DEFAULT abap_false
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_tm_pop.
 
@@ -29,26 +46,61 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_init      TYPE abap_bool.
     DATA mv_edit      TYPE abap_bool.
     DATA mv_copy      TYPE abap_bool.
+    DATA mv_read_only TYPE abap_bool.
 
     DATA mv_row_id    TYPE string.
+    " rows of the caller's table - before a cancel this popup has only
+    " appended rows (the new row of an add, the rows of a copy), so the
+    " cancel cuts mt_data back to this count instead of keeping a second
+    " copy of the table in the app state
+    DATA mv_lines_org TYPE i.
     DATA mv_f4_fname  TYPE string.
     DATA mv_shlpfield TYPE string.
 
     DATA mt_dfies     TYPE z2ui5_cl_tm_context=>ty_t_dfies.
-    DATA mv_tabname   TYPE string. " Importing
+    " Importing
+    DATA mv_tabname   TYPE string.
 
     METHODS on_init.
     METHODS render_popup.
     METHODS on_event.
 
+    "! A text of data element roll - or fallback where the data element is
+    "! not on the system or has no text
     METHODS get_txt
       IMPORTING
         roll          TYPE clike
-        !type         TYPE clike OPTIONAL
+        !type         TYPE clike  OPTIONAL
+        fallback      TYPE string OPTIONAL
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! The text of message no of class id - or fallback where the message
+    "! class or number is not on the system (a missing message answers with
+    "! its own class and number, or nothing)
+    METHODS get_msg
+      IMPORTING
+        !id           TYPE clike
+        !no           TYPE clike
+        fallback      TYPE string
       RETURNING
         VALUE(result) TYPE string.
 
     METHODS get_fixval.
+
+    "! The label of a field: the long text of the data element the layout
+    "! names for it (or the field's own), else the DDIC field texts, else the
+    "! field name - a popup opened by another app may come without a layout
+    METHODS get_label
+      IMPORTING
+        dfies         TYPE z2ui5_cl_tm_context=>ty_s_dfies
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! The buttons at the bottom - Close always, the others by mode
+    METHODS render_popup_buttons
+      IMPORTING
+        dialog TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     METHODS get_input_type
       IMPORTING
@@ -66,7 +118,6 @@ CLASS z2ui5_cl_tm_pop DEFINITION
       CHANGING
         !row TYPE any.
 
-    METHODS set_row_id.
     METHODS popup_edit.
 
     METHODS get_active_row
@@ -80,7 +131,12 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS on_after_shlp.
     METHODS on_after_f4.
     METHODS copy_table_line.
-    METHODS get_view_settings.
+
+    "! Undo what the popup did to mt_data: drop the appended rows. The row
+    "! it was opened for is written only by popup_edit( ) and
+    "! popup_delete( ), and both leave the popup - a cancel finds it as it
+    "! came in
+    METHODS cancel.
 
   PRIVATE SECTION.
 
@@ -116,8 +172,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     table_to_row( ).
 
     get_fixval( ).
-
-    get_view_settings( ).
 
   ENDMETHOD.
 
@@ -177,7 +231,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                       )->a( n = `xmlns:core` v = `sap.ui.core`
                       )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
-    DATA(title) = COND #( WHEN mv_edit = abap_true THEN get_txt( 'CRMST_UIU_EDIT' ) ELSE get_txt( 'RSLPO_GUI_ADDPART' ) ).
+    DATA(title) = COND #( WHEN mv_read_only = abap_true THEN `Display`
+                          WHEN mv_edit = abap_true THEN get_txt( roll = 'CRMST_UIU_EDIT' fallback = `Edit` )
+                          ELSE get_txt( roll = 'RSLPO_GUI_ADDPART' fallback = `Add` ) ).
 
     DATA(dialog) = popup->ele( `Dialog`
                           )->a( n = `title` t = title
@@ -194,7 +250,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       DATA(enabled) = xsdbool( NOT ( dfies->keyflag = abap_true AND mv_edit = abap_true ) ).
 
-      IF dfies->fieldname = 'MANDT'.
+      IF dfies->fieldname = 'MANDT' OR mv_read_only = abap_true.
         enabled = abap_false.
       ENDIF.
 
@@ -206,8 +262,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      DATA(text) = z2ui5_cl_tm_context=>rtti_get_data_element_texts(
-                       CONV string( mo_layout->ms_layout-t_layout[ fname = dfies->fieldname ]-rollname ) )-long.
+      DATA(text) = get_label( dfies->* ).
 
       simple_form->tag( `Label`
           )->a( n = `design` v = COND #( WHEN dfies->keyflag = abap_true THEN `Bold` ELSE `Standard` )
@@ -226,22 +281,22 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       IF dfies->checktable IS NOT INITIAL.
 
         simple_form->tag( `Input`
-            )->a( n = `value` v = client->_bind_edit( <val> )
+            )->a( n = `value` v = client->_bind( <val> )
             )->a( n = `showValueHelp` b = abap_true
             )->a( n = `enabled` b = enabled
             )->a( n = `type` v = type
-            )->a( n = `maxLength` v = dfies->leng
+            )->a( n = `maxLength` v = |{ CONV i( dfies->leng ) }|
             )->a( n = `valueHelpRequest` v = client->_event( val   = 'CALL_POPUP_F4'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
       ELSEIF dfies->mac IS NOT INITIAL.
 
         simple_form->tag( `Input`
-            )->a( n = `value` v = client->_bind_edit( <val> )
+            )->a( n = `value` v = client->_bind( <val> )
             )->a( n = `showValueHelp` b = abap_true
             )->a( n = `enabled` b = enabled
             )->a( n = `type` v = type
-            )->a( n = `maxLength` v = dfies->leng
+            )->a( n = `maxLength` v = |{ CONV i( dfies->leng ) }|
             )->a( n = `valueHelpRequest` v = client->_event( val   = 'CALL_POPUP_SHLP'
                                                                t_arg = VALUE #( ( CONV #( dfies->fieldname ) ) ) ) ).
 
@@ -249,7 +304,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         simple_form->ele( `ComboBox`
             )->a( n = `enabled` b = enabled
-            )->a( n = `selectedKey` v = client->_bind_edit( <val> )
+            )->a( n = `selectedKey` v = client->_bind( <val> )
             )->a( n = `items` v = client->_bind( <struc> )
             )->tag( n = `Item` ns = `core`
             )->a( n = `key` v = '{LOW}'
@@ -261,21 +316,23 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
           WHEN 'D'.
 
             simple_form->tag( `DatePicker`
-                )->a( n = `value` v = client->_bind_edit( <val> ) ).
+                )->a( n = `value` v = client->_bind( <val> )
+                )->a( n = `enabled` b = enabled ).
 
           WHEN 'T'.
 
             simple_form->tag( `TimePicker`
-                )->a( n = `value` v = client->_bind_edit( <val> ) ).
+                )->a( n = `value` v = client->_bind( <val> )
+                )->a( n = `enabled` b = enabled ).
 
           WHEN OTHERS.
 
             simple_form->tag( `Input`
-                )->a( n = `value` v = client->_bind_edit( <val> )
+                )->a( n = `value` v = client->_bind( <val> )
                 )->a( n = `showValueHelp` b = abap_false
                 )->a( n = `enabled` b = enabled
                 )->a( n = `type` v = type
-                )->a( n = `maxLength` v = dfies->leng ).
+                )->a( n = `maxLength` v = |{ CONV i( dfies->leng ) }| ).
 
         ENDCASE.
 
@@ -283,54 +340,95 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     ENDLOOP.
 
-    DATA(toolbar) = dialog->ele( `buttons` ).
-
-    DATA(ls_msg) = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'PRC_PRI'
-                                                  no = `512` ).
-    " MESSAGE s512(prc_pri) INTO DATA(msg).
-
-    toolbar->tag( `Button`
-        )->a( n = `text` t = ls_msg-text
-        )->a( n = `press` v = client->_event( 'POPUP_CLOSE' ) ).
-
-    IF mv_edit = abap_true.
-
-      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'ISLM_DI_GEN'
-                                              no = `160` ).
-      "  MESSAGE s160(islm_di_gen) INTO msg.
-
-      toolbar->tag( `Button`
-          )->a( n = `text` t = ls_msg-text
-          )->a( n = `type` v = 'Reject'
-          )->a( n = `icon` v = 'sap-icon://delete'
-          )->a( n = `press` v = client->_event( val = 'POPUP_DELETE' ) ).
-
-      ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'cnv_iuuc_replication'
-                                              no = `229` ).
-      " MESSAGE s229(cnv_iuuc_replication) INTO msg.
-
-      IF mv_copy = abap_true.
-        toolbar->tag( `Button`
-            )->a( n = `text` t = ls_msg-text
-            )->a( n = `icon` v = 'sap-icon://copy'
-            )->a( n = `press` v = client->_event( val = 'POPUP_COPY' ) ).
-      ENDIF.
-    ENDIF.
-
-    ls_msg = z2ui5_cl_tm_context=>msg_get_by_msg( id = 'fsl_utilities'
-                                            no = `020` ).
-    " MESSAGE s020(fsl_utilities) INTO msg.
-
-    toolbar->tag( `Button`
-        )->a( n = `text` t = ls_msg-text
-        )->a( n = `press` v = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
-        )->a( n = `type` v = 'Emphasized' ).
+    render_popup_buttons( dialog ).
 
     client->popup_display( popup->stringify( ) ).
 
   ENDMETHOD.
 
+  METHOD render_popup_buttons.
+
+    DATA(toolbar) = dialog->ele( `buttons` ).
+
+    " MESSAGE s512(prc_pri) INTO DATA(msg).
+    toolbar->tag( `Button`
+        )->a( n = `text` t = get_msg( id       = 'PRC_PRI'
+                                      no       = `512`
+                                      fallback = `Cancel` )
+        )->a( n = `press` v = client->_event( 'POPUP_CLOSE' ) ).
+
+    IF mv_read_only = abap_true.
+      RETURN.
+    ENDIF.
+
+    IF mv_edit = abap_true.
+
+      "  MESSAGE s160(islm_di_gen) INTO msg.
+      toolbar->tag( `Button`
+          )->a( n = `text` t = get_msg( id       = 'ISLM_DI_GEN'
+                                        no       = `160`
+                                        fallback = `Delete` )
+          )->a( n = `type` v = 'Reject'
+          )->a( n = `icon` v = 'sap-icon://delete'
+          )->a( n = `press` v = client->_event( val = 'POPUP_DELETE' ) ).
+
+      IF mv_copy = abap_true.
+        " MESSAGE s229(cnv_iuuc_replication) INTO msg.
+        toolbar->tag( `Button`
+            )->a( n = `text` t = get_msg( id       = 'cnv_iuuc_replication'
+                                          no       = `229`
+                                          fallback = `Copy` )
+            )->a( n = `icon` v = 'sap-icon://copy'
+            )->a( n = `press` v = client->_event( val = 'POPUP_COPY' ) ).
+      ENDIF.
+    ENDIF.
+
+    " MESSAGE s020(fsl_utilities) INTO msg.
+    toolbar->tag( `Button`
+        )->a( n = `text` t = get_msg( id       = 'fsl_utilities'
+                                      no       = `020`
+                                      fallback = `OK` )
+        )->a( n = `press` v = client->_event( COND #( WHEN mv_edit = abap_true THEN `POPUP_EDIT` ELSE `POPUP_ADD` ) )
+        )->a( n = `type` v = 'Emphasized' ).
+
+  ENDMETHOD.
+
+  METHOD get_label.
+
+    DATA(rollname) = CONV string( dfies-rollname ).
+    IF mo_layout IS BOUND.
+      DATA(layout) = VALUE #( mo_layout->ms_layout-t_layout[ fname = dfies-fieldname ] OPTIONAL ).
+      IF layout-rollname IS NOT INITIAL.
+        rollname = layout-rollname.
+      ENDIF.
+    ENDIF.
+
+    IF rollname IS NOT INITIAL.
+      TRY.
+          result = z2ui5_cl_tm_context=>rtti_get_data_element_texts( rollname )-long.
+        CATCH cx_root.
+          CLEAR result.
+      ENDTRY.
+    ENDIF.
+
+    IF result IS INITIAL.
+      result = dfies-scrtext_l.
+    ENDIF.
+    IF result IS INITIAL.
+      result = dfies-fieldtext.
+    ENDIF.
+    IF result IS INITIAL.
+      result = dfies-fieldname.
+    ENDIF.
+
+  ENDMETHOD.
+
   METHOD on_event.
+
+    " read-only: the popup only closes - whatever else a request asks for
+    IF mv_read_only = abap_true AND client->get( )-event <> 'POPUP_CLOSE'.
+      RETURN.
+    ENDIF.
 
     CASE client->get( )-event.
 
@@ -373,10 +471,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       WHEN 'POPUP_CLOSE'.
 
-        ASSIGN mt_data_tmp->* TO FIELD-SYMBOL(<mt_data_tmp>).
-        ASSIGN mt_data->* TO FIELD-SYMBOL(<mt_data>).
-
-        <mt_data> = <mt_data_tmp>.
+        cancel( ).
 
         client->popup_destroy( ).
 
@@ -396,20 +491,45 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   METHOD get_txt.
 
-    DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
+    TRY.
+        DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
-    CASE type.
-      WHEN 'L'.
-        result = texts-long.
-      WHEN 'M'.
-        result = texts-medium.
-      WHEN 'S'.
-        result = texts-short.
-      WHEN 'H'.
-        result = texts-header.
-      WHEN OTHERS.
-        result = texts-short.
-    ENDCASE.
+        CASE type.
+          WHEN 'L'.
+            result = texts-long.
+          WHEN 'M'.
+            result = texts-medium.
+          WHEN 'S'.
+            result = texts-short.
+          WHEN 'H'.
+            result = texts-header.
+          WHEN OTHERS.
+            result = texts-short.
+        ENDCASE.
+
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+    IF result IS INITIAL.
+      result = fallback.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_msg.
+
+    TRY.
+        result = z2ui5_cl_tm_context=>msg_get_by_msg( id = id
+                                                      no = no )-text.
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+    IF result IS INITIAL
+        OR ( to_upper( result ) CS to_upper( id ) AND result CS no ).
+      result = fallback.
+    ENDIF.
 
   ENDMETHOD.
 
@@ -444,7 +564,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      <fixval> = z2ui5_cl_tm_context=>rtti_get_t_ddic_fixed_values( CONV #( dfies->rollname ) ).
+      <fixval> = z2ui5_cl_tm_context=>rtti_get_t_ddic_fixed_values( dfies->rollname ).
 
     ENDLOOP.
 
@@ -545,7 +665,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
           lv_where = |{ dfies-fieldname } = `{ lv_value }`|.
         ELSE.
           DATA(lv_where_and) = |AND { dfies-fieldname } = `{ lv_value }`|.
-          CONCATENATE lv_where lv_where_and INTO lv_where SEPARATED BY space.
+          lv_where = |{ lv_where } { lv_where_and }|.
         ENDIF.
       ENDIF.
     ENDLOOP.
@@ -607,25 +727,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD set_row_id.
-
-    FIELD-SYMBOLS <tab>  TYPE STANDARD TABLE.
-    FIELD-SYMBOLS <line> TYPE any.
-
-    ASSIGN mt_data->* TO <tab>.
-
-    LOOP AT <tab> ASSIGNING <line>.
-
-      FIELD-SYMBOLS <row> TYPE any.
-      UNASSIGN <row>.
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO <row>.
-      IF <row> IS ASSIGNED.
-        <row> = sy-tabix.
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
   METHOD popup_edit.
 
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
@@ -659,12 +760,19 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(lt_arg) = client->get( )-t_event_arg.
 
-    mv_f4_fname = VALUE string( lt_arg[ 1 ] ).
+    mv_f4_fname = VALUE string( lt_arg[ 1 ] OPTIONAL ).
 
-    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
+    IF NOT line_exists( mt_dfies[ fieldname = mv_f4_fname ] ).
+      " no field named by the event - nothing to help with
+      RETURN.
+    ENDIF.
+    DATA(dfies) = mt_dfies[ fieldname = mv_f4_fname ].
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
 
     client->nav_app_call( z2ui5_cl_popup_value_help=>factory( i_table = mv_tabname
                                                             i_fname = mv_f4_fname
@@ -678,12 +786,19 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(lt_arg) = client->get( )-t_event_arg.
 
-    mv_shlpfield = VALUE string( lt_arg[ 1 ] ).
+    mv_shlpfield = VALUE string( lt_arg[ 1 ] OPTIONAL ).
 
-    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
+    IF NOT line_exists( mt_dfies[ fieldname = mv_shlpfield ] ).
+      " no field named by the event - nothing to help with
+      RETURN.
+    ENDIF.
+    DATA(dfies) = mt_dfies[ fieldname = mv_shlpfield ].
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
 
     client->nav_app_call( z2ui5_cl_popup_shlp=>factory( i_table = mv_tabname
                                                              i_fname = mv_shlpfield
@@ -704,6 +819,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     result->mo_layout  = is_layout.
     result->mv_edit    = iv_edit_mode.
     result->mv_tabname = iv_tabname.
+    result->mv_read_only = iv_read_only.
 
     IF iv_copy_mode IS NOT SUPPLIED.
       result->mv_copy = abap_true.
@@ -723,27 +839,25 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA result->mt_data     TYPE HANDLE new_table_desc.
-        CREATE DATA result->mt_data_tmp TYPE HANDLE new_table_desc.
         CREATE DATA result->ms_data_row TYPE HANDLE new_struct_desc.
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
     ASSIGN io_table->* TO FIELD-SYMBOL(<io_table>).
-    ASSIGN result->mt_data->* TO FIELD-SYMBOL(<mt_data>).
-    ASSIGN result->mt_data_tmp->* TO FIELD-SYMBOL(<mt_data_tmp>).
+    ASSIGN result->mt_data->* TO <tab>.
+    IF <io_table> IS NOT ASSIGNED OR <tab> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
 
-    <mt_data> = <io_table>.
-    <mt_data_tmp> = <io_table>.
+    <tab> = <io_table>.
+    result->mv_lines_org = lines( <tab> ).
 
+    " an existing row: the popup edits a copy (ms_data_row) and writes the
+    " row only when it is left with the change - a cancel finds it as it was
     IF iv_row_id IS INITIAL.
 
-      ASSIGN result->mt_data->* TO <tab>.
-      IF <tab> IS NOT ASSIGNED.
-        RETURN.
-      ENDIF.
-
-      APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
+      INSERT INITIAL LINE INTO TABLE <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       IF <line> IS ASSIGNED.
 
@@ -780,7 +894,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         IF app->mv_return_value IS NOT INITIAL.
 
-          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
+          DATA(dfies) = VALUE #( mt_dfies[ fieldname = mv_f4_fname ] OPTIONAL ).
 
           ASSIGN ms_data_row->* TO <row>.
           ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -811,7 +925,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         IF app->mv_return_value IS NOT INITIAL.
 
-          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
+          DATA(dfies) = VALUE #( mt_dfies[ fieldname = mv_shlpfield ] OPTIONAL ).
 
           ASSIGN ms_data_row->* TO <row>.
           ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -837,7 +951,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
+    INSERT INITIAL LINE INTO TABLE <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
     IF <line> IS NOT ASSIGNED.
       RETURN.
@@ -858,7 +972,19 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD get_view_settings.
+  METHOD cancel.
+
+    FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
+
+    ASSIGN mt_data->* TO <tab>.
+    IF <tab> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
+    DATA(first_added) = mv_lines_org + 1.
+    IF lines( <tab> ) >= first_added.
+      DELETE <tab> FROM first_added.
+    ENDIF.
 
   ENDMETHOD.
 

@@ -128,6 +128,10 @@ rmSync(DEPS, { recursive: true, force: true });
 mkdirSync(DEPS, { recursive: true });
 const own = lintConfig(ROOT);
 const cloned = new Map(); // key -> folder name
+// key -> the dependency's files glob below src/ - a branch can hold packages
+// the lint leaves out (abap2UI5 DEV: src/03, ICF handler and BSP)
+const clonedFiles = new Map();
+const srcGlob = (files) => (typeof files === "string" && files.startsWith("/src/") ? files : "/src/**/*.*");
 const others = new Map(); // key -> dependency entry
 const queue = (own.dependencies ?? []).map((d) => ({ ...d, level: 0 }));
 while (queue.length > 0) {
@@ -154,6 +158,7 @@ while (queue.length > 0) {
       if (existsSync(join(process.env.RENAME_DEPS_FROM, local, f))) cpSync(join(process.env.RENAME_DEPS_FROM, local, f), join(target, f));
     }
     cloned.set(key, folder);
+    clonedFiles.set(key, srcGlob(d.files));
     queue.push(...(lintConfig(target).dependencies ?? []).map((x) => ({ ...x, level: d.level + 1 })));
     continue;
   }
@@ -161,6 +166,7 @@ while (queue.length > 0) {
   console.log(`rename: clone ${d.url}${d.branch ? ` (${d.branch})` : ""}`);
   execFileSync("git", cloneArgs, { stdio: "inherit" });
   cloned.set(key, folder);
+  clonedFiles.set(key, srcGlob(d.files));
   queue.push(...(lintConfig(target).dependencies ?? []).map((x) => ({ ...x, level: d.level + 1 })));
 }
 
@@ -188,7 +194,7 @@ for (const dir of [join(ROOT, "src"), ...[...cloned.values()].map((f) => join(DE
 
 const config = {
   global: {
-    files: ["/../../src/**/*.*", ...[...cloned.values()].map((f) => `/rename-deps/${f}/src/**/*.*`)],
+    files: ["/../../src/**/*.*", ...[...cloned].map(([k, f]) => `/rename-deps/${f}${clonedFiles.get(k)}`)],
   },
   // the clones' own dependencies first: abaplint takes the first definition
   // of an object, and abap2UI5 compiles against the one it lints with
