@@ -649,9 +649,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
         " past the table buffer, as the check before the save reads it
         SELECT *
-          FROM (mv_table) BYPASSING BUFFER
+          FROM (mv_table)
           ORDER BY PRIMARY KEY
-          INTO CORRESPONDING FIELDS OF TABLE @<table>.
+          INTO CORRESPONDING FIELDS OF TABLE @<table>
+          BYPASSING BUFFER.
 
         SORT <table>.
 
@@ -732,9 +733,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     " database
     TRY.
         SELECT *
-          FROM (mv_table) BYPASSING BUFFER
+          FROM (mv_table)
           ORDER BY PRIMARY KEY
-          INTO CORRESPONDING FIELDS OF TABLE @<db>.
+          INTO CORRESPONDING FIELDS OF TABLE @<db>
+          BYPASSING BUFFER.
       CATCH cx_root.
         CLEAR result.
     ENDTRY.
