@@ -809,7 +809,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     DATA lv_mode    TYPE c LENGTH 1 VALUE `E`.
     DATA lv_scope   TYPE c LENGTH 1 VALUE `1`.
     DATA lv_tabname TYPE c LENGTH 30.
-    DATA lv_varkey  TYPE c LENGTH 250.
+    DATA lr_varkey  TYPE REF TO data.
+    FIELD-SYMBOLS <varkey> TYPE any.
 
     result = abap_true.
     IF z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
@@ -819,12 +820,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     lv_tabname = mv_table.
     " a client-dependent table is locked in the logon client only
     IF line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
-      lv_varkey = sy-mandt.
+      " VARKEY is passed by reference and must have the exact type of the
+      " module's parameter (RSTABLE-VARKEY - its length differs between
+      " releases); created by name, so the class also compiles on ABAP Cloud
+      TRY.
+          CREATE DATA lr_varkey TYPE (`RSTABLE-VARKEY`).
+          ASSIGN lr_varkey->* TO <varkey>.
+          <varkey> = sy-mandt.
+        CATCH cx_root ##NO_HANDLER.
+          " no such type: the whole table is locked, as without a client
+      ENDTRY.
     ENDIF.
 
     " called by name, so the class compiles where the module does not exist
     TRY.
-        IF lv_varkey IS INITIAL.
+        IF <varkey> IS NOT ASSIGNED.
           CALL FUNCTION lv_fm
             EXPORTING
               mode_rstable   = lv_mode
@@ -840,7 +850,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             EXPORTING
               mode_rstable   = lv_mode
               tabname        = lv_tabname
-              varkey         = lv_varkey
+              varkey         = <varkey>
               _scope         = lv_scope
             EXCEPTIONS
               foreign_lock   = 1
@@ -885,7 +895,8 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     DATA lv_mode    TYPE c LENGTH 1 VALUE `E`.
     DATA lv_scope   TYPE c LENGTH 1 VALUE `1`.
     DATA lv_tabname TYPE c LENGTH 30.
-    DATA lv_varkey  TYPE c LENGTH 250.
+    DATA lr_varkey  TYPE REF TO data.
+    FIELD-SYMBOLS <varkey> TYPE any.
 
     IF z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
       RETURN.
@@ -893,11 +904,20 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     lv_tabname = mv_table.
     IF line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
-      lv_varkey = sy-mandt.
+      " VARKEY is passed by reference and must have the exact type of the
+      " module's parameter (RSTABLE-VARKEY - its length differs between
+      " releases); created by name, so the class also compiles on ABAP Cloud
+      TRY.
+          CREATE DATA lr_varkey TYPE (`RSTABLE-VARKEY`).
+          ASSIGN lr_varkey->* TO <varkey>.
+          <varkey> = sy-mandt.
+        CATCH cx_root ##NO_HANDLER.
+          " no such type: the whole table is locked, as without a client
+      ENDTRY.
     ENDIF.
 
     TRY.
-        IF lv_varkey IS INITIAL.
+        IF <varkey> IS NOT ASSIGNED.
           CALL FUNCTION lv_fm
             EXPORTING
               mode_rstable = lv_mode
@@ -911,7 +931,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             EXPORTING
               mode_rstable = lv_mode
               tabname      = lv_tabname
-              varkey       = lv_varkey
+              varkey       = <varkey>
               _scope       = lv_scope
             EXCEPTIONS
               error_message = 1
