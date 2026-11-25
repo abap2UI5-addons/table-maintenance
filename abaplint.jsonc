@@ -469,6 +469,11 @@
         "Perform",
         "Form",
         "Write"
+      ],
+      // the vendored abap-util copies stay close to the master (AGENTS.md)
+      "exclude": [
+        "/src/z2ui5_cl_tm_context",
+        "/src/z2ui5_cx_tm_error"
       ]
     },
     "function_module_parameter_names": true,
