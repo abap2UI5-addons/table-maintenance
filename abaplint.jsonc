@@ -452,7 +452,25 @@
     "character_field_literal_blanks": true,
     "copy_chain": true,
     "field_symbol_never_assigned": true,
-    "forbidden_statement": true,
+    // statements with a successor that this repository no longer uses -
+    // listed so they do not come back (abaplint 2.120.116+). The
+    // widely used READ TABLE / APPEND / CREATE OBJECT / ... follow
+    // once the code no longer has them
+    "forbidden_statement": {
+      "statements": [
+        "Describe",
+        "Refresh",
+        "Ranges",
+        "SelectLoop",
+        "Collect",
+        "Overlay",
+        "Leave",
+        "TypePools",
+        "Perform",
+        "Form",
+        "Write"
+      ]
+    },
     "function_module_parameter_names": true,
     "inline_generic_source": true,
     // 255: the longest line abapGit and the ABAP editor accept
