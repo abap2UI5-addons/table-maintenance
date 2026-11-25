@@ -12,12 +12,6 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     " the caller's table with the change of this popup - read it back once
     " the popup returned; after a cancel it is the table as it came in
     DATA mt_data     TYPE REF TO data.
-    " the row the popup was opened for, as it came in (see mv_row_id_org).
-    " Public on purpose: it points at a row of a type built at runtime, and
-    " abap2UI5 serializes such a generic data reference into the draft only
-    " as a public attribute - protected it failed with
-    " CX_REFERENCE_NOT_SERIALIZABLE (APP_SERIALIZATION_ERROR). Not for callers
-    DATA mr_row_org  TYPE REF TO data.
 
     "! The popup for one row of a table - edit, add, copy, delete, display.
     "! Read the table back from mt_data once the popup returned (the caller's
@@ -60,10 +54,6 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     " cancel cuts mt_data back to this count instead of keeping a second
     " copy of the table in the app state
     DATA mv_lines_org TYPE i.
-    " the row the popup was opened for, as it came in - the cancel puts it
-    " back, so it also holds should a later change write into the row before
-    " the popup is left (its reference mr_row_org is public, see there)
-    DATA mv_row_id_org TYPE string.
     DATA mv_f4_fname  TYPE string.
     DATA mv_shlpfield TYPE string.
 
@@ -128,7 +118,6 @@ CLASS z2ui5_cl_tm_pop DEFINITION
       CHANGING
         !row TYPE any.
 
-    METHODS set_row_id.
     METHODS popup_edit.
 
     METHODS get_active_row
@@ -142,10 +131,11 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS on_after_shlp.
     METHODS on_after_f4.
     METHODS copy_table_line.
-    METHODS get_view_settings.
 
-    "! Undo what the popup did to mt_data: drop the appended rows, put the
-    "! row it was opened for back as it came in
+    "! Undo what the popup did to mt_data: drop the appended rows. The row
+    "! it was opened for is written only by popup_edit( ) and
+    "! popup_delete( ), and both leave the popup - a cancel finds it as it
+    "! came in
     METHODS cancel.
 
   PRIVATE SECTION.
@@ -182,8 +172,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     table_to_row( ).
 
     get_fixval( ).
-
-    get_view_settings( ).
 
   ENDMETHOD.
 
@@ -739,25 +727,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD set_row_id.
-
-    FIELD-SYMBOLS <tab>  TYPE STANDARD TABLE.
-    FIELD-SYMBOLS <line> TYPE any.
-
-    ASSIGN mt_data->* TO <tab>.
-
-    LOOP AT <tab> ASSIGNING <line>.
-
-      FIELD-SYMBOLS <row> TYPE any.
-      UNASSIGN <row>.
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO <row>.
-      IF <row> IS ASSIGNED.
-        <row> = sy-tabix.
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
   METHOD popup_edit.
 
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
@@ -870,21 +839,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     <tab> = <io_table>.
     result->mv_lines_org = lines( <tab> ).
 
-    IF iv_row_id IS NOT INITIAL.
-
-      " the one row the popup works on - its state for the cancel
-      LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<row_org>).
-        ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <row_org> TO FIELD-SYMBOL(<row_org_id>).
-        IF sy-subrc = 0 AND <row_org_id> = iv_row_id.
-          CREATE DATA result->mr_row_org LIKE <row_org>.
-          ASSIGN result->mr_row_org->* TO FIELD-SYMBOL(<row_org_copy>).
-          <row_org_copy> = <row_org>.
-          result->mv_row_id_org = iv_row_id.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-
-    ELSE.
+    " an existing row: the popup edits a copy (ms_data_row) and writes the
+    " row only when it is left with the change - a cancel finds it as it was
+    IF iv_row_id IS INITIAL.
 
       APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
@@ -1001,14 +958,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD get_view_settings.
-
-  ENDMETHOD.
-
   METHOD cancel.
 
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
-    FIELD-SYMBOLS <row_org> TYPE any.
 
     ASSIGN mt_data->* TO <tab>.
     IF <tab> IS NOT ASSIGNED.
@@ -1019,19 +971,6 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     IF lines( <tab> ) >= first_added.
       DELETE <tab> FROM first_added.
     ENDIF.
-
-    IF mr_row_org IS NOT BOUND.
-      RETURN.
-    ENDIF.
-    ASSIGN mr_row_org->* TO <row_org>.
-
-    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
-      ASSIGN COMPONENT z2ui5_cl_tm_001=>mc_row_id OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-      IF sy-subrc = 0 AND <row_id> = mv_row_id_org.
-        <line> = <row_org>.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
 
   ENDMETHOD.
 
