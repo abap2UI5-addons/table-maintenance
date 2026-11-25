@@ -37,6 +37,11 @@ INTERFACE z2ui5_if_tm_001
   "! Release the edit lock of the table and switch the session back to
   "! stateless - for an embedder that drops this instance while it holds
   "! the lock (a view cluster on a tab change). Nothing if none is held.
-  METHODS release_lock.
+  "! An embedder passes its client of this roundtrip: the instance holds the
+  "! client of the last roundtrip it ran in, and the switch to stateless
+  "! made there does not reach the current response.
+  METHODS release_lock
+    IMPORTING
+      client TYPE REF TO z2ui5_if_client OPTIONAL.
 
 ENDINTERFACE.

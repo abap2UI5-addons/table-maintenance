@@ -975,14 +975,18 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD z2ui5_if_tm_001~release_lock.
 
+    IF client IS BOUND.
+      me->client = client.
+    ENDIF.
+
     IF mv_lock_active = abap_false.
       RETURN.
     ENDIF.
 
     unlock( ).
     CLEAR mv_lock_active.
-    IF client IS BOUND.
-      client->set_session_stateful( abap_false ).
+    IF me->client IS BOUND.
+      me->client->set_session_stateful( abap_false ).
     ENDIF.
 
   ENDMETHOD.
