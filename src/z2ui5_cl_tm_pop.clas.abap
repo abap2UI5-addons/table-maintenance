@@ -397,8 +397,8 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(rollname) = CONV string( dfies-rollname ).
     IF mo_layout IS BOUND.
-      READ TABLE mo_layout->ms_layout-t_layout INTO DATA(layout) WITH KEY fname = dfies-fieldname.
-      IF sy-subrc = 0 AND layout-rollname IS NOT INITIAL.
+      DATA(layout) = VALUE #( mo_layout->ms_layout-t_layout[ fname = dfies-fieldname ] OPTIONAL ).
+      IF layout-rollname IS NOT INITIAL.
         rollname = layout-rollname.
       ENDIF.
     ENDIF.
@@ -665,7 +665,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
           lv_where = |{ dfies-fieldname } = `{ lv_value }`|.
         ELSE.
           DATA(lv_where_and) = |AND { dfies-fieldname } = `{ lv_value }`|.
-          CONCATENATE lv_where lv_where_and INTO lv_where SEPARATED BY space.
+          lv_where = |{ lv_where } { lv_where_and }|.
         ENDIF.
       ENDIF.
     ENDLOOP.
@@ -762,11 +762,11 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     mv_f4_fname = VALUE string( lt_arg[ 1 ] OPTIONAL ).
 
-    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
-    IF sy-subrc <> 0.
+    IF NOT line_exists( mt_dfies[ fieldname = mv_f4_fname ] ).
       " no field named by the event - nothing to help with
       RETURN.
     ENDIF.
+    DATA(dfies) = mt_dfies[ fieldname = mv_f4_fname ].
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -788,11 +788,11 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     mv_shlpfield = VALUE string( lt_arg[ 1 ] OPTIONAL ).
 
-    READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
-    IF sy-subrc <> 0.
+    IF NOT line_exists( mt_dfies[ fieldname = mv_shlpfield ] ).
       " no field named by the event - nothing to help with
       RETURN.
     ENDIF.
+    DATA(dfies) = mt_dfies[ fieldname = mv_shlpfield ].
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -857,7 +857,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
     " row only when it is left with the change - a cancel finds it as it was
     IF iv_row_id IS INITIAL.
 
-      APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
+      INSERT INITIAL LINE INTO TABLE <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       IF <line> IS ASSIGNED.
 
@@ -894,7 +894,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         IF app->mv_return_value IS NOT INITIAL.
 
-          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
+          DATA(dfies) = VALUE #( mt_dfies[ fieldname = mv_f4_fname ] OPTIONAL ).
 
           ASSIGN ms_data_row->* TO <row>.
           ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -925,7 +925,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
         IF app->mv_return_value IS NOT INITIAL.
 
-          READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
+          DATA(dfies) = VALUE #( mt_dfies[ fieldname = mv_shlpfield ] OPTIONAL ).
 
           ASSIGN ms_data_row->* TO <row>.
           ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
@@ -951,7 +951,7 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    APPEND INITIAL LINE TO <tab> ASSIGNING FIELD-SYMBOL(<line>).
+    INSERT INITIAL LINE INTO TABLE <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
     IF <line> IS NOT ASSIGNED.
       RETURN.

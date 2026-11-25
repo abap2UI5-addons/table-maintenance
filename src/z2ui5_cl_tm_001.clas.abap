@@ -368,10 +368,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       " outside this save ever sees deletions that were not executed
       DATA(keys_org) = get_keys( <org> ).
       LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line_org>).
-        READ TABLE keys_org INTO DATA(key_org) INDEX sy-tabix.
-        IF sy-subrc = 0 AND NOT line_exists( key_set[ table_line = key_org-key ] ).
+        DATA(index_org) = sy-tabix.
+        DATA(key_org) = VALUE #( keys_org[ index_org ] OPTIONAL ).
+        IF line_exists( keys_org[ index_org ] ) AND NOT line_exists( key_set[ table_line = key_org-key ] ).
           " key fields only - enough for the DELETE and the transport keys
-          APPEND INITIAL LINE TO <del_org> ASSIGNING <del>.
+          INSERT INITIAL LINE INTO TABLE <del_org> ASSIGNING <del>.
           MOVE-CORRESPONDING <line_org> TO <del>.
         ENDIF.
       ENDLOOP.
@@ -520,7 +521,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       ENDLOOP.
 
-      APPEND keys TO result.
+      INSERT keys INTO TABLE result.
       CLEAR keys.
 
     ENDLOOP.
@@ -607,18 +608,18 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
         IF xsdbool( line_exists( comp[ name = mc_row_id ] ) ) = abap_false.
-          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
+          INSERT LINES OF VALUE cl_abap_structdescr=>component_table(
                                     ( name = mc_row_id
-                                      type = CAST #( cl_abap_datadescr=>describe_by_data( id ) ) ) ) TO result.
+                                      type = CAST #( cl_abap_datadescr=>describe_by_data( id ) ) ) ) INTO TABLE result.
         ENDIF.
         IF xsdbool( line_exists( comp[ name = 'SELKZ' ] ) ) = abap_false.
-          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
+          INSERT LINES OF VALUE cl_abap_structdescr=>component_table(
                                     ( name = 'SELKZ'
-                                      type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) ) TO result.
+                                      type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) ) INTO TABLE result.
 
         ENDIF.
 
-        APPEND LINES OF comp TO result.
+        INSERT LINES OF comp INTO TABLE result.
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
@@ -682,12 +683,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     LOOP AT t_comp INTO DATA(comp).
       IF line_exists( mt_dfies[ fieldname = comp-name
                                 keyflag   = abap_true ] ).
-        APPEND comp TO result.
+        INSERT comp INTO TABLE result.
       ENDIF.
     ENDLOOP.
 
-    APPEND VALUE #( name = mc_row_hash
-                    type = CAST #( cl_abap_datadescr=>describe_by_data( hash ) ) ) TO result.
+    INSERT VALUE #( name = mc_row_hash
+                    type = CAST #( cl_abap_datadescr=>describe_by_data( hash ) ) ) INTO TABLE result.
 
   ENDMETHOD.
 
@@ -706,7 +707,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     " copy_corresponding keeps the order - row n of <org> is row n of table
     LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line_org>).
       DATA(index) = sy-tabix.
-      READ TABLE table ASSIGNING FIELD-SYMBOL(<line>) INDEX index.
+      ASSIGN table[ index ] TO FIELD-SYMBOL(<line>).
       ASSIGN COMPONENT mc_row_hash OF STRUCTURE <line_org> TO FIELD-SYMBOL(<hash>).
       IF sy-subrc = 0 AND <line> IS ASSIGNED.
         <hash> = get_row_hash( <line> ).
@@ -786,13 +787,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     DATA(keys) = get_keys( <db> ).
     LOOP AT <db> ASSIGNING FIELD-SYMBOL(<line>).
-      READ TABLE keys INTO DATA(key) INDEX sy-tabix.
+      " get_keys( ) returns one key per row, in the order of the rows
+      DATA(key) = VALUE #( keys[ sy-tabix ] OPTIONAL ).
       INSERT |{ key-key }#{ get_row_hash( <line> ) }| INTO TABLE state_db.
     ENDLOOP.
 
     keys = get_keys( <org> ).
     LOOP AT <org> ASSIGNING FIELD-SYMBOL(<line_org>).
-      READ TABLE keys INTO key INDEX sy-tabix.
+      key = VALUE #( keys[ sy-tabix ] OPTIONAL ).
       ASSIGN COMPONENT mc_row_hash OF STRUCTURE <line_org> TO FIELD-SYMBOL(<hash>).
       IF sy-subrc = 0.
         INSERT |{ key-key }#{ <hash> }| INTO TABLE state_snapshot.
@@ -1154,11 +1156,15 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         DATA(sub_col) = ``.
         DATA(index) = 0.
 
+        DATA line LIKE LINE OF mo_layout->ms_layout-t_layout.
         LOOP AT layout->t_sub_col INTO DATA(subcol).
 
           index = index + 1.
 
-          READ TABLE mo_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
+          " a subcolumn that names no position keeps the previous one
+          IF line_exists( mo_layout->ms_layout-t_layout[ fname = subcol-fname ] ).
+            line = mo_layout->ms_layout-t_layout[ fname = subcol-fname ].
+          ENDIF.
 
           " relative to the row: a namespaced column (/CWM/XCWMAT) is a
           " level of the row in the model, {CWM/XCWMAT}
@@ -1318,11 +1324,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD row_select.
 
     DATA(lt_arg) = client->get( )-t_event_arg.
-    READ TABLE lt_arg INTO DATA(ls_arg) INDEX 1.
-
-    IF sy-subrc <> 0.
+    IF NOT line_exists( lt_arg[ 1 ] ).
       RETURN.
     ENDIF.
+    DATA(ls_arg) = lt_arg[ 1 ].
 
     " the row is shown in any case - read-only while another user edits
     " the table (edit_lock has said who)
@@ -1595,7 +1600,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD get_layout.
 
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
-    SHIFT class LEFT DELETING LEADING '\CLASS='.
+    class = shift_left( val = class sub = `\CLASS=` ).
 
     IF mv_multi_edit = abap_false.
       DATA(control) = z2ui5_cl_layo_manager=>m_table.
@@ -1825,7 +1830,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       IF <selkz> = abap_true.
         <selkz> = abap_false.
-        APPEND <line> TO <tab> ASSIGNING <copy>.
+        INSERT <line> INTO TABLE <tab> ASSIGNING <copy>.
 
         " only the copy gets a new id, and it goes to the working copy too:
         " re-keying every row left mt_table_tmp with ids nothing matched
@@ -1837,7 +1842,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             CATCH cx_root ##NO_HANDLER.
           ENDTRY.
         ENDIF.
-        APPEND <copy> TO <tab_tmp>.
+        INSERT <copy> INTO TABLE <tab_tmp>.
 
         mv_change_active = abap_true.
 
@@ -1950,7 +1955,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
             ENDLOOP.
 
             IF found = abap_false.
-              APPEND <line_changed> TO <tab_tmp>.
+              INSERT <line_changed> INTO TABLE <tab_tmp>.
             ENDIF.
 
           ENDLOOP.
@@ -2082,7 +2087,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     CLEAR ct_target.
     LOOP AT it_source ASSIGNING <ls_source>.
-      APPEND INITIAL LINE TO ct_target ASSIGNING <ls_target>.
+      INSERT INITIAL LINE INTO TABLE ct_target ASSIGNING <ls_target>.
       MOVE-CORRESPONDING <ls_source> TO <ls_target>.
     ENDLOOP.
 

@@ -468,8 +468,21 @@
         "TypePools",
         "Perform",
         "Form",
-        "Write"
+        "Write",
+        "ReadTable",
+        "Append",
+        "CreateObject",
+        "GetReference",
+        "Concatenate",
+        "Condense",
+        "Translate",
+        "Replace",
+        "Find",
+        "Shift",
+        "Check"
       ],
+      // MoveCorresponding stays allowed: z2ui5_cl_tm_001 moves between
+      // generic rows (TYPE any), which CORRESPONDING #( ) cannot take
       // the vendored abap-util copies stay close to the master (AGENTS.md)
       "exclude": [
         "/src/z2ui5_cl_tm_context",
