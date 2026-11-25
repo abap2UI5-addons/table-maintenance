@@ -1621,9 +1621,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         " War es das Layout?
         DATA(app) = CAST z2ui5_cl_popup_show_tr( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
-        ms_transport = app->ms_transport.
+        " a cancelled popup returns no request - the one chosen before stays
+        IF app->ms_transport IS NOT INITIAL.
+          ms_transport = app->ms_transport.
+        ENDIF.
 
-        IF ms_transport IS NOT INITIAL.
+        IF app->ms_transport IS NOT INITIAL.
 
           CASE mv_ucomm_tmp.
             WHEN 'TRANSPORT_ALL'.
