@@ -12,6 +12,12 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     " the caller's table with the change of this popup - read it back once
     " the popup returned; after a cancel it is the table as it came in
     DATA mt_data     TYPE REF TO data.
+    " the row the popup was opened for, as it came in (see mv_row_id_org).
+    " Public on purpose: it points at a row of a type built at runtime, and
+    " abap2UI5 serializes such a generic data reference into the draft only
+    " as a public attribute - protected it failed with
+    " CX_REFERENCE_NOT_SERIALIZABLE (APP_SERIALIZATION_ERROR). Not for callers
+    DATA mr_row_org  TYPE REF TO data.
 
     "! The popup for one row of a table - edit, add, copy, delete, display.
     "! Read the table back from mt_data once the popup returned (the caller's
@@ -56,9 +62,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     DATA mv_lines_org TYPE i.
     " the row the popup was opened for, as it came in - the cancel puts it
     " back, so it also holds should a later change write into the row before
-    " the popup is left
+    " the popup is left (its reference mr_row_org is public, see there)
     DATA mv_row_id_org TYPE string.
-    DATA mr_row_org   TYPE REF TO data.
     DATA mv_f4_fname  TYPE string.
     DATA mv_shlpfield TYPE string.
 
