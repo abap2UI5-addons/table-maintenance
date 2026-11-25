@@ -760,12 +760,19 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(lt_arg) = client->get( )-t_event_arg.
 
-    mv_f4_fname = VALUE string( lt_arg[ 1 ] ).
+    mv_f4_fname = VALUE string( lt_arg[ 1 ] OPTIONAL ).
 
     READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_f4_fname.
+    IF sy-subrc <> 0.
+      " no field named by the event - nothing to help with
+      RETURN.
+    ENDIF.
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
 
     client->nav_app_call( z2ui5_cl_popup_value_help=>factory( i_table = mv_tabname
                                                             i_fname = mv_f4_fname
@@ -779,12 +786,19 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
     DATA(lt_arg) = client->get( )-t_event_arg.
 
-    mv_shlpfield = VALUE string( lt_arg[ 1 ] ).
+    mv_shlpfield = VALUE string( lt_arg[ 1 ] OPTIONAL ).
 
     READ TABLE mt_dfies INTO DATA(dfies) WITH KEY fieldname = mv_shlpfield.
+    IF sy-subrc <> 0.
+      " no field named by the event - nothing to help with
+      RETURN.
+    ENDIF.
 
     ASSIGN ms_data_row->* TO <row>.
     ASSIGN COMPONENT dfies-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value_struc>).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
 
     client->nav_app_call( z2ui5_cl_popup_shlp=>factory( i_table = mv_tabname
                                                              i_fname = mv_shlpfield
