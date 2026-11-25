@@ -1491,8 +1491,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
 
         mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
-        DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
-        selkz->* = xsdbool( mv_multi_edit = abap_true ).
+        " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
+        ASSIGN mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ] TO FIELD-SYMBOL(<selkz_column>).
+        IF <selkz_column> IS ASSIGNED.
+          <selkz_column>-visible = xsdbool( mv_multi_edit = abap_true ).
+        ENDIF.
 
         IF mv_multi_edit = abap_true.
           CLEAR mv_search_value.
@@ -1675,8 +1678,11 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   METHOD render_ui_table.
 
     " Set Selkz active!
-    DATA(selkz) = REF #( mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ]-visible OPTIONAL ).
-    selkz->* = abap_true.
+    " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
+    ASSIGN mo_layout->ms_layout-t_layout[ fname = 'SELKZ' ] TO FIELD-SYMBOL(<selkz_column>).
+    IF <selkz_column> IS ASSIGNED.
+      <selkz_column>-visible = abap_true.
+    ENDIF.
 
     ASSIGN mt_table->* TO FIELD-SYMBOL(<tab>).
 
