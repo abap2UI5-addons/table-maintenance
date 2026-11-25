@@ -186,7 +186,7 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
 
       " the table left behind keeps no edit lock (and no stateful session)
       IF mo_app IS BOUND.
-        mo_app->release_lock( ).
+        mo_app->release_lock( client ).
       ENDIF.
 
       mo_app = NEW #( ).
