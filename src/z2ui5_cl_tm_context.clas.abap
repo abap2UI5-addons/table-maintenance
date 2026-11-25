@@ -719,7 +719,9 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
             IMPORTING
               output   = value
             EXCEPTIONS
-              OTHERS   = 99.
+              " a MESSAGE TYPE E of the exit ends the request without it
+              error_message = 98
+              OTHERS        = 99.
 
         ELSE.
 
@@ -729,12 +731,14 @@ CLASS z2ui5_cl_tm_context IMPLEMENTATION.
             IMPORTING
               output = value
             EXCEPTIONS
-              OTHERS = 99.
+              error_message = 98
+              OTHERS        = 99.
 
         ENDIF.
 
         IF sy-subrc <> 0.
-          " the exit refused the value (MESSAGE ... RAISING) - it stays as it was
+          " the exit refused the value (MESSAGE ... RAISING, or a plain
+          " MESSAGE TYPE E) - it stays as it was
           RETURN.
         ENDIF.
 
