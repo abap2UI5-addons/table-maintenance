@@ -157,11 +157,13 @@ of the installation with the same name.
   open is shown read-only. The lock is released, and the session made
   stateless again, as soon as nothing is left to save (after a save outside
   multi-edit, a refresh, a cancelled popup, leaving multi-edit without
-  changes), on **Back**, on a tab change in `z2ui5_cl_tm_002`, and with the
-  session itself when the browser is closed or the session times out. An app
-  that embeds the maintenance and drops the instance releases the lock with
-  `release_lock( )` of `z2ui5_if_tm_001`, the way `z2ui5_cl_tm_002` does on a
-  tab change.
+  changes), on a tab change in `z2ui5_cl_tm_002`, and with the session
+  itself when the browser is closed or the session times out. The page has
+  no back button of its own: a launchpad back or home with unsaved changes
+  keeps the lock until the session times out. An app that embeds the
+  maintenance and drops the instance releases the lock with
+  `release_lock( client )` of `z2ui5_if_tm_001`, the way `z2ui5_cl_tm_002`
+  does on a tab change.
 - **The save checks again**, whatever happened to the session: it takes the
   lock for its own request and compares the database with what was read (the
   key and a hash of every row). Rows added, changed or deleted by someone
