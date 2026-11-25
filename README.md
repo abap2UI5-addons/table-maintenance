@@ -202,6 +202,46 @@ tables.
   (`SBUF_GENERIC_RESET`), so the change shows at once - Standard ABAP only,
   ABAP Cloud has no table buffer reset
 
+## Commits
+
+The abap2UI5 addons (layout-management, popups, table-maintenance) share one
+commit model:
+
+- **The addon commits only in its own apps.** A popup or app of the addon
+  that saves on a button of its own runs in a roundtrip of its own and ends
+  its own LUW - `COMMIT WORK AND WAIT`, or `ROLLBACK WORK` on failure.
+- **A library method commits only with `iv_commit = abap_true`.** Every
+  public method that writes on behalf of its caller takes
+  `iv_commit TYPE abap_bool DEFAULT abap_true`. The default keeps the old
+  behaviour: the method ends with `COMMIT WORK AND WAIT` - and so commits
+  whatever the caller has open at that moment as well. With
+  `iv_commit = abap_false` it neither commits nor rolls back: its writes join
+  the caller's LUW, and the caller commits them once, together with its own
+  changes.
+- **On failure the method raises its exception.** With
+  `iv_commit = abap_false` it never runs `ROLLBACK WORK` - whatever it wrote
+  before the failure is still in the caller's LUW, and the caller decides,
+  normally with `ROLLBACK WORK`. With `iv_commit = abap_true` it fails as it
+  always did (the table below).
+- **The caller must commit.** abap2UI5 runs `ROLLBACK WORK` before and after
+  `main( )` of a stateless app, so what an app writes - itself, or through a
+  method called with `iv_commit = abap_false` - is lost unless the app commits
+  it in the same roundtrip.
+
+In this addon:
+
+| Where | Commits | On failure |
+|---|---|---|
+| Library methods | none - no public method of this addon writes to the database (`release_lock( )` of `z2ui5_if_tm_001` only releases the lock) | - |
+| **Save** in `z2ui5_cl_tm_001` - its own app | always: the rows, the deletions and the transport entries with one `COMMIT WORK AND WAIT` (popups' `add_data_to_tranport( )` called with `iv_commit = abap_false`) | `ROLLBACK WORK` of all of it and a message, see [Saving, transport and locking](#saving-transport-and-locking) |
+| **Transport all entries** in `z2ui5_cl_tm_001` - its own app | always: `add_data_to_tranport( )` with its default `iv_commit = abap_true`, in a roundtrip that writes nothing else | a message toast, nothing committed |
+| Layout settings (layout-management's popup) | Save and Delete of a layout, the popup's own app | see layout-management |
+
+An app that embeds the maintenance (`mo_parent_view`, as `z2ui5_cl_tm_002`
+does) runs it inside its own `main( )`: the maintenance commits only in the
+roundtrips of its own **Save** and **Transport** buttons, and an embedder that
+has changes of its own open in such a roundtrip has them committed with it.
+
 ## Security
 
 The app writes to whatever table is passed in the URL parameter `table` and
