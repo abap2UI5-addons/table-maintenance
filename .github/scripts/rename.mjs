@@ -33,6 +33,27 @@
  *        a dependency <dir>/<repository> holds is copied from there instead
  *        of cloned - to check a change that spans several repositories
  *
+ * package.json "config" - every key optional, an addon with src/ and
+ * abaplint.jsonc at its root needs none:
+ *   renameMaxLength     the longest name the repository allows (default 10)
+ *   renameMaxLengthWhy  why it is lower than 10, in the refusal of a longer one
+ *   renameSource        the folder of the ABAP sources (default "src")
+ *   renameLint          the lint config whose dependencies and syntax the run
+ *                       takes (default abaplint.jsonc / abaplint.json at the
+ *                       root)
+ *   renameOwn           a regular expression for the repository's own objects
+ *                       that are not z2ui5_ ones, the part to keep in its one
+ *                       group: "^z((?:cl|cx|if)_.*)$" renames zcl_app_001 to
+ *                       zmyui5_cl_app_001 or /ca2ui5/cl_app_001
+ *   renameSkip          { "<folder or file below the root>": "<why>" } - what
+ *                       abaplint cannot rename yet (an object type without a
+ *                       renamer, code that needs one): neither renamed nor
+ *                       delivered, and every run lists it with its reason
+ *   renameLiterals      { "<literal>": "<why>" } - a literal the check would
+ *                       report that cannot be derived yet (it names what
+ *                       renameSkip keeps, or is text shown to the user):
+ *                       listed with its reason instead of failing the run
+ *
  * The same file in every addon that has a rename - change it everywhere.
  */
 import { execFileSync, spawnSync } from "node:child_process";
@@ -40,7 +61,14 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+// the repository root: the nearest folder above this file with a package.json
+// - .github/scripts/ in the addons, scripts/ where a repository keeps every
+// script there
+const ROOT = (() => {
+  let dir = dirname(fileURLToPath(import.meta.url));
+  while (!existsSync(join(dir, "package.json")) && dirname(dir) !== dir) dir = dirname(dir);
+  return dir;
+})();
 const BASE = join(ROOT, ".github/abaplint");
 const DEPS = join(BASE, "rename-deps");
 const OUTPUT = join(BASE, "output");
@@ -58,7 +86,16 @@ const fail = (msg) => {
 
 // ---------------------------------------------------------------- the prefix
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
-const maxLength = Number(pkg.config?.renameMaxLength ?? 10);
+const cfg = pkg.config ?? {};
+const maxLength = Number(cfg.renameMaxLength ?? 10);
+const SOURCE = cfg.renameSource ?? "src";
+const SRC = join(ROOT, SOURCE);
+const SKIP = cfg.renameSkip ?? {};
+const KNOWN_LITERALS = cfg.renameLiterals ?? {};
+// the objects the rename takes: abap2UI5's z2ui5_ ones, and the repository's
+// own when they are named otherwise
+const OWN = [/^z2ui5_(.*)$/i, ...(cfg.renameOwn ? [new RegExp(cfg.renameOwn, "i")] : [])];
+const isOwn = (name) => OWN.some((re) => re.test(name));
 let prefix;
 const name = arg("--name");
 if (name === undefined) {
@@ -76,7 +113,7 @@ if (name === undefined) {
   }
   const length = prefix.endsWith("_") ? prefix.length - 1 : prefix.length;
   if (length > maxLength) {
-    fail(`'${name}' has ${length} characters, this addon allows at most ${maxLength} (package.json config.renameMaxLength)`);
+    fail(`'${name}' has ${length} characters, this repository allows at most ${maxLength} (package.json config.renameMaxLength${cfg.renameMaxLengthWhy ? ` - ${cfg.renameMaxLengthWhy}` : ""})`);
   }
 }
 
@@ -104,7 +141,8 @@ function readJsonc(file) {
   return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
 }
 
-function lintConfig(dir) {
+function lintConfig(dir, file) {
+  if (file !== undefined) return readJsonc(join(dir, file));
   for (const f of ["abaplint.jsonc", "abaplint.json"]) {
     if (existsSync(join(dir, f))) return readJsonc(join(dir, f));
   }
@@ -126,7 +164,7 @@ const ownUrl = (() => {
 // abaplint dependency
 rmSync(DEPS, { recursive: true, force: true });
 mkdirSync(DEPS, { recursive: true });
-const own = lintConfig(ROOT);
+const own = lintConfig(ROOT, cfg.renameLint);
 const cloned = new Map(); // key -> folder name
 // key -> the dependency's files glob below src/ - a branch can hold packages
 // the lint leaves out
@@ -191,7 +229,7 @@ const walk = (dir) => readdirSync(dir).flatMap((n) => {
 // order - and deleted from the later clones: abaplint renames nothing while
 // any issue is open, a duplicate definition included
 const seen = new Set();
-for (const dir of [join(ROOT, "src"), ...[...cloned.values()].map((f) => join(DEPS, f, "src"))].filter(existsSync)) {
+for (const dir of [SRC, ...[...cloned.values()].map((f) => join(DEPS, f, "src"))].filter(existsSync)) {
   const mine = new Set();
   for (const f of walk(dir)) {
     const key = basename(f).split(".").slice(0, 2).join(".").toLowerCase();
@@ -202,16 +240,28 @@ for (const dir of [join(ROOT, "src"), ...[...cloned.values()].map((f) => join(DE
   mine.forEach((k) => seen.add(k));
 }
 
+// what renameSkip names stays out of the run - abaplint renames nothing
+// while one of its files is open, and a file it does not read it cannot
+// half-rename either (an ICF node renamed, the BSP it serves not)
+const escape = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+for (const path of Object.keys(SKIP)) {
+  if (!existsSync(join(ROOT, path))) fail(`config.renameSkip names ${path}, which does not exist`);
+}
+const skipped = Object.keys(SKIP).map((p) => escape(join(ROOT, p).replace(/\/$/, "")) + (statSync(join(ROOT, p)).isDirectory() ? "/" : "$"));
 const config = {
   global: {
-    files: ["/../../src/**/*.*", ...[...cloned].map(([k, f]) => `/rename-deps/${f}${clonedFiles.get(k)}`)],
+    files: [`/../../${SOURCE}/**/*.*`, ...[...cloned].map(([k, f]) => `/rename-deps/${f}${clonedFiles.get(k)}`)],
+    ...(skipped.length > 0 ? { exclude: skipped } : {}),
   },
   // the clones' own dependencies first: abaplint takes the first definition
   // of an object, and abap2UI5 compiles against the one it lints with
   dependencies: [...others.values()].sort((a, b) => b.level - a.level).map(({ level, ...d }) => d),
   rename: {
     output: "output",
-    patterns: [{ type: TYPES, oldName: "^z2ui5_(.*)$", newName: `${prefix}$1` }],
+    patterns: [
+      { type: TYPES, oldName: "^z2ui5_(.*)$", newName: `${prefix}$1` },
+      ...(cfg.renameOwn ? [{ type: TYPES, oldName: cfg.renameOwn, newName: `${prefix}$1` }] : []),
+    ],
   },
   // the addon's own syntax settings - its errorNamespace decides what an
   // unknown type is, as in its main lint
@@ -233,7 +283,7 @@ const config = {
 // what the addon's own lint leaves out (abaplint.jsonc global.exclude, e.g. a
 // package for another target) is renamed like everything else, but not
 // checked here either: every rule skips it
-const excluded = (own.global?.exclude ?? []).map((e) => join(ROOT, e).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+const excluded = (own.global?.exclude ?? []).map((e) => escape(join(ROOT, e)));
 if (excluded.length > 0) {
   for (const rule of Object.keys(config.rules)) config.rules[rule] = { exclude: excluded };
 }
@@ -256,8 +306,8 @@ if (issues.length > 0 || run.status !== 0) {
 }
 
 // the renamed src/ - abaplint writes <output>/<absolute path of the file>
-const srcOut = join(OUTPUT, join(ROOT, "src"));
-if (!existsSync(srcOut)) fail(`no renamed src/ under ${relative(ROOT, OUTPUT)}`);
+const srcOut = join(OUTPUT, SRC);
+if (!existsSync(srcOut)) fail(`no renamed ${SOURCE}/ under ${relative(ROOT, OUTPUT)}`);
 
 // ---------------------------------------------------------- what was renamed
 const objectOf = (file) => {
@@ -266,11 +316,12 @@ const objectOf = (file) => {
   return { name: m[1].replace(/#/g, "/").split(" ")[0], type: m[2].toUpperCase(), file };
 };
 const original = new Set();
-for (const dir of [join(ROOT, "src"), ...[...cloned.values()].map((f) => join(DEPS, f, "src"))]) {
+// renameSkip included: a literal naming what stays behind is just as wrong
+for (const dir of [SRC, ...[...cloned.values()].map((f) => join(DEPS, f, "src"))]) {
   if (!existsSync(dir)) continue;
   for (const f of walk(dir)) {
     const o = objectOf(f);
-    if (o && TYPES.split("|").includes(o.type) && /^z2ui5_/i.test(o.name)) original.add(o.name.toUpperCase());
+    if (o && TYPES.split("|").includes(o.type) && isOwn(o.name)) original.add(o.name.toUpperCase());
   }
 }
 
@@ -284,7 +335,7 @@ for (const f of walk(srcOut)) {
   if (o.name.length > limit) {
     problems.push(`${relative(srcOut, f)}: ${o.type} ${o.name} has ${o.name.length} characters, at most ${limit}`);
   }
-  if (/^z2ui5_/i.test(o.name)) problems.push(`${relative(srcOut, f)}: ${o.type} ${o.name} was not renamed`);
+  if (isOwn(o.name)) problems.push(`${relative(srcOut, f)}: ${o.type} ${o.name} was not renamed`);
 }
 
 // literals naming a renamed object by its original name - the pieces of a
@@ -347,13 +398,16 @@ function literalsOf(line) {
   }
   return out;
 }
-const NAMING = /^(?:\\(?:class|interface|type)=)?(z2ui5_[a-z0-9_]+)(?:(?:~|=>|->|-)\S*)?$/i;
+const NAMING = /^(?:\\(?:class|interface|type)=)?([a-z][a-z0-9_]*)(?:(?:~|=>|->|-)\S*)?$/i;
+const blocked = [];
 for (const f of walk(srcOut)) {
   if (!f.endsWith(".abap") || f.endsWith(".testclasses.abap")) continue;
   readFileSync(f, "utf8").split("\n").forEach((line, n) => {
     for (const lit of literalsOf(line)) {
       const word = lit.match(NAMING)?.[1].toUpperCase();
-      if (word && original.has(word)) {
+      if (word && original.has(word) && KNOWN_LITERALS[lit] !== undefined) {
+        blocked.push(`${relative(srcOut, f)}:${n + 1}: the literal '${lit}' - ${KNOWN_LITERALS[lit]}`);
+      } else if (word && original.has(word)) {
         problems.push(`${relative(srcOut, f)}:${n + 1}: the literal '${lit}' names ${word} - the rename does not rewrite a literal, derive the name from a typed reference`);
       }
     }
@@ -362,9 +416,14 @@ for (const f of walk(srcOut)) {
 
 for (const p of problems) console.error(p);
 if (problems.length > 0) {
-  fail(`${problems.length} problem(s) in the renamed src/`);
+  fail(`${problems.length} problem(s) in the renamed ${SOURCE}/`);
 }
-console.log(`rename: z2ui5_ -> ${prefix} - ${walk(srcOut).length} file(s), 0 issues`);
+// what this rename does not cover, on every run - so nobody takes it for a
+// complete one
+for (const [path, why] of Object.entries(SKIP)) console.log(`rename: not renamed ${path} - ${why}`);
+for (const b of blocked) console.log(`rename: kept ${b}`);
+const gaps = Object.keys(SKIP).length + blocked.length > 0 ? ` - ${Object.keys(SKIP).length} path(s) not renamed, ${blocked.length} literal(s) kept, listed above` : "";
+console.log(`rename: z2ui5_ -> ${prefix} - ${walk(srcOut).length} file(s), 0 issues${gaps}`);
 
 // ------------------------------------------------------------ the branch tree
 const out = arg("--out");
@@ -372,7 +431,7 @@ if (out !== undefined) {
   const dir = resolve(ROOT, out);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
-  cpSync(srcOut, join(dir, "src"), { recursive: true });
+  cpSync(srcOut, join(dir, SOURCE), { recursive: true });
   for (const f of ["LICENSE", ".abapgit.xml"]) {
     if (existsSync(join(ROOT, f))) cpSync(join(ROOT, f), join(dir, f));
   }
