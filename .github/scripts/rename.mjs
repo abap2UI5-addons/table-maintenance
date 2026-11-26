@@ -129,9 +129,19 @@ mkdirSync(DEPS, { recursive: true });
 const own = lintConfig(ROOT);
 const cloned = new Map(); // key -> folder name
 // key -> the dependency's files glob below src/ - a branch can hold packages
-// the lint leaves out (abap2UI5 DEV: src/03, ICF handler and BSP)
+// the lint leaves out
 const clonedFiles = new Map();
-const srcGlob = (files) => (typeof files === "string" && files.startsWith("/src/") ? files : "/src/**/*.*");
+// the abap2UI5 core is always src/00-02, whatever the addon's config says:
+// its src/03 (the ICF handler on IF_HTTP_EXTENSION, the BSP Z2UI5, the SICF
+// node) is not in the API dependency an addon lints with, so in global.files
+// it fails the run (IF_HTTP_EXTENSION unknown) - and no addon references it,
+// abaplint cannot rename its BSP and SICF node (the core does that with
+// tools/bsp_rename), and the renamed clone is thrown away anyway
+const CORE = "https://github.com/abap2ui5/abap2ui5";
+const srcGlob = (key, files) => {
+  if (key === CORE) return "/src/0[0-2]/**/*.*";
+  return typeof files === "string" && files.startsWith("/src/") ? files : "/src/**/*.*";
+};
 const others = new Map(); // key -> dependency entry
 const queue = (own.dependencies ?? []).map((d) => ({ ...d, level: 0 }));
 while (queue.length > 0) {
@@ -158,7 +168,7 @@ while (queue.length > 0) {
       if (existsSync(join(process.env.RENAME_DEPS_FROM, local, f))) cpSync(join(process.env.RENAME_DEPS_FROM, local, f), join(target, f));
     }
     cloned.set(key, folder);
-    clonedFiles.set(key, srcGlob(d.files));
+    clonedFiles.set(key, srcGlob(key, d.files));
     queue.push(...(lintConfig(target).dependencies ?? []).map((x) => ({ ...x, level: d.level + 1 })));
     continue;
   }
@@ -166,7 +176,7 @@ while (queue.length > 0) {
   console.log(`rename: clone ${d.url}${d.branch ? ` (${d.branch})` : ""}`);
   execFileSync("git", cloneArgs, { stdio: "inherit" });
   cloned.set(key, folder);
-  clonedFiles.set(key, srcGlob(d.files));
+  clonedFiles.set(key, srcGlob(key, d.files));
   queue.push(...(lintConfig(target).dependencies ?? []).map((x) => ({ ...x, level: d.level + 1 })));
 }
 
