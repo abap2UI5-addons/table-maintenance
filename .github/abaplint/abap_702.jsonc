@@ -16,9 +16,9 @@
       "files": "/src/**/*.*"
     },
     {
-      // the downported abap2UI5 (branch 702 is generated from main)
+      // the downported abap2UI5 release (tag <release>-702)
       "url": "https://github.com/abap2UI5/abap2UI5",
-      "branch": "702",
+      "branch": "1.151.0-702",
       "folder": "/abap2UI5",
       "files": "/src/**/*.*"
     },
