@@ -88,6 +88,12 @@ CLASS z2ui5_cl_tm_001 DEFINITION
         key    TYPE string,
       END OF ty_s_keys.
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
+    TYPES:
+      BEGIN OF ty_s_row_index,
+        row_id TYPE string,
+        tabix  TYPE i,
+      END OF ty_s_row_index.
+    TYPES ty_t_row_index TYPE HASHED TABLE OF ty_s_row_index WITH UNIQUE KEY row_id.
 
     DATA mv_table          TYPE string.
     DATA mt_dfies          TYPE z2ui5_cl_tm_context=>ty_t_dfies.
@@ -156,6 +162,22 @@ CLASS z2ui5_cl_tm_001 DEFINITION
         !table        TYPE STANDARD TABLE
       RETURNING
         VALUE(result) TYPE ty_t_keys.
+
+    "! The ROW_ID of every row of table with the index of the first row
+    "! that carries it - a lookup by hash instead of a loop over the rows
+    METHODS get_row_index
+      IMPORTING
+        !table        TYPE STANDARD TABLE
+      RETURNING
+        VALUE(result) TYPE ty_t_row_index.
+
+    "! Whether mt_table has a row for every ROW_ID of the working copy
+    "! mt_table_tmp - it has to in multi-edit: the save of multi-edit and its
+    "! way back to normal mode take mt_table for the whole table, and the
+    "! save deletes the rows missing from it
+    METHODS check_rows_complete
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS get_comp
       RETURNING
@@ -410,6 +432,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       CLEAR mv_ucomm_tmp.
 
       IF mv_multi_edit = abap_true.
+        " the cell edits of multi-edit are in mt_table only - so it is the
+        " table saved, and every row of the working copy has to be in it:
+        " a row missing would be deleted below
+        IF check_rows_complete( ) = abap_false.
+          client->message_box_display( text = |The rows shown are not all rows of { mv_table } - nothing was saved. Refresh the table and enter the changes again.|
+                                       type = `error` ).
+          RETURN.
+        ENDIF.
         ASSIGN mt_table->* TO <tab>.
       ELSE.
         " Filter issue
@@ -618,6 +648,60 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       CLEAR keys.
 
     ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD get_row_index.
+
+    FIELD-SYMBOLS <line> TYPE any.
+    FIELD-SYMBOLS <id>   TYPE any.
+
+    LOOP AT table ASSIGNING <line>.
+      DATA(index) = sy-tabix.
+
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
+      IF <id> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
+
+      " the first row of an id wins - a later one is not inserted
+      INSERT VALUE #( row_id = <id>
+                      tabix  = index ) INTO TABLE result.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD check_rows_complete.
+
+    FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <line>    TYPE any.
+    FIELD-SYMBOLS <id>      TYPE any.
+
+    ASSIGN mt_table->* TO <tab>.
+    ASSIGN mt_table_tmp->* TO <tab_tmp>.
+    IF <tab> IS NOT ASSIGNED OR <tab_tmp> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
+    DATA(ids) = get_row_index( <tab> ).
+
+    LOOP AT <tab_tmp> ASSIGNING <line>.
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
+      " a check of its own: the 702 downport reads ids before the condition
+      " it is in, with <id> as the key
+      IF <id> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
+      IF NOT line_exists( ids[ row_id = <id> ] ).
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+
+    result = abap_true.
 
   ENDMETHOD.
 
@@ -1698,7 +1782,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_SEARCH'.
 
-        search( ).
+        " normal mode only - multi-edit shows no search field, and its
+        " mt_table has to stay the whole table: the cell edits of
+        " multi-edit live in mt_table alone (search( ) would overwrite them
+        " with mt_table_tmp), and its save and its way back to normal mode
+        " take mt_table as the whole table (a filtered one would delete
+        " every row the filter hid). A search event in multi-edit - a
+        " stale or forged request - is ignored
+        IF mv_multi_edit = abap_false.
+          search( ).
+        ENDIF.
 
       WHEN 'BUTTON_SAVE'.
 
@@ -1733,6 +1826,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         IF mv_multi_edit = abap_false AND edit_lock( ) = abap_false.
           RETURN.
         ENDIF.
+        " back to normal mode, mt_table becomes the working copy below -
+        " only when it is the whole table, or normal mode's save would
+        " delete the rows missing from it
+        IF mv_multi_edit = abap_true AND check_rows_complete( ) = abap_false.
+          client->message_box_display( text = |The rows shown are not all rows of { mv_table } - refresh the table and enter the changes again.|
+                                       type = `error` ).
+          RETURN.
+        ENDIF.
 
         mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
         " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
@@ -1746,7 +1847,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           search( ).
         ELSE.
           " multi-edit changes mt_table only; normal mode saves and searches
-          " from mt_table_tmp, which would drop those changes
+          " from mt_table_tmp, which would drop those changes. mt_table is
+          " the whole table here: entering multi-edit cleared the search,
+          " no search runs in multi-edit (BUTTON_SEARCH) and
+          " check_rows_complete( ) has said so above
           ASSIGN mt_table->* TO FIELD-SYMBOL(<tab_edit>).
           ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<tab_edit_tmp>).
           " a cell changed without a submit has not set mv_change_active
