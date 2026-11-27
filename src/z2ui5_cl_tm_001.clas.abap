@@ -48,6 +48,39 @@ CLASS z2ui5_cl_tm_001 DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_tm_001.
 
+    "! A text of data element roll - or fallback where the data element is
+    "! not on the system or has no text (an EWM or S/4HANA system may lack
+    "! the data elements the texts are borrowed from). The app and its popup
+    "! (z2ui5_cl_tm_pop) take their texts from here.
+    "! @parameter roll     | the data element
+    "! @parameter type     | L, M, S or H - the long, medium, short or heading
+    "!                       text; any other value: the short text
+    "! @parameter fallback | the text where the data element has none
+    CLASS-METHODS get_text_by_dtel
+      IMPORTING
+        roll          TYPE clike
+        !type         TYPE clike  OPTIONAL
+        fallback      TYPE string OPTIONAL
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! The text of message no of class id - or fallback where the message
+    "! class or number is not on the system (an EWM or S/4HANA system may
+    "! lack the classes the texts are borrowed from; a missing message
+    "! answers with its own class and number, or nothing)
+    "! @parameter id       | the message class
+    "! @parameter no       | the message number
+    "! @parameter v1       | the first placeholder
+    "! @parameter fallback | the text where the message is missing
+    CLASS-METHODS get_text_by_msg
+      IMPORTING
+        !id           TYPE clike
+        !no           TYPE clike
+        v1            TYPE clike OPTIONAL
+        fallback      TYPE string
+      RETURNING
+        VALUE(result) TYPE string.
+
   PROTECTED SECTION.
     TYPES:
       BEGIN OF ty_s_keys,
@@ -86,9 +119,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS render_main.
 
-    "! A text of data element roll - or fallback where the data element is
-    "! not on the system or has no text (an EWM or S/4HANA system may lack
-    "! the data elements the texts are borrowed from)
+    "! A text of data element roll - or fallback, see get_text_by_dtel
     METHODS get_txt
       IMPORTING
         roll          TYPE string
@@ -97,10 +128,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
       RETURNING
         VALUE(result) TYPE string.
 
-    "! The text of message no of class id - or fallback where the message
-    "! class or number is not on the system (an EWM or S/4HANA system may
-    "! lack the classes the texts are borrowed from; a missing message
-    "! answers with its own class and number, or nothing)
+    "! The text of message no of class id - or fallback, see get_text_by_msg
     METHODS get_msg
       IMPORTING
         !id           TYPE clike
@@ -251,6 +279,23 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_txt.
 
+    result = get_text_by_dtel( roll     = roll
+                               type     = type
+                               fallback = fallback ).
+
+  ENDMETHOD.
+
+  METHOD get_msg.
+
+    result = get_text_by_msg( id       = id
+                              no       = no
+                              v1       = v1
+                              fallback = fallback ).
+
+  ENDMETHOD.
+
+  METHOD get_text_by_dtel.
+
     TRY.
         DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
 
@@ -277,7 +322,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD get_msg.
+  METHOD get_text_by_msg.
 
     TRY.
         result = z2ui5_cl_tm_context=>msg_get_by_msg( id = id
