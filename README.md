@@ -3,8 +3,8 @@
 [![abap2UI5-addons](https://img.shields.io/badge/abap2UI5--addons-app-1873b4)](https://github.com/abap2UI5-addons)
 [![ABAP](https://img.shields.io/badge/ABAP-Cloud%20%7C%20Standard%20%E2%89%A5%207.50%20%7C%207.02-blue)](#installation)
 [![abap2UI5](https://img.shields.io/badge/requires-abap2UI5-blue)](https://github.com/abap2UI5/abap2UI5)
-[![popups](https://img.shields.io/badge/requires-popups-blue)](https://github.com/abap2UI5-addons/popups)
 [![layout-management](https://img.shields.io/badge/requires-layout--management-blue)](https://github.com/abap2UI5-addons/layout-management)
+[![popups](https://img.shields.io/badge/requires-popups-blue)](https://github.com/abap2UI5-addons/popups)
 [![License](https://img.shields.io/github/license/abap2UI5-addons/table-maintenance)](LICENSE)
 <br>
 [![CI](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/table-maintenance/ci.yaml?branch=main&label=CI)](https://github.com/abap2UI5-addons/table-maintenance/actions/workflows/ci.yaml)
@@ -51,18 +51,20 @@ To only look into a table, without changing it, use
   On-Premise with ABAP for Cloud) or Standard ABAP on SAP NetWeaver AS ABAP
   7.50 or higher
 - NetWeaver 7.02 - 7.40: the branch `702`, downported automatically from
-  `main` on every push - pull abap2UI5, popups and layout-management from their `702` branches as well
+  `main` on every push - pull abap2UI5, layout-management and popups from their `702` branches as well
 - [abap2UI5](https://github.com/abap2UI5/abap2UI5)
+- [abap2UI5-addons/layout-management](https://github.com/abap2UI5-addons/layout-management) -
+  the column layouts of the table; popups needs it too
 - [abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups) - value
   help, search help and the transport request popup
-- [abap2UI5-addons/layout-management](https://github.com/abap2UI5-addons/layout-management) -
-  the column layouts of the table
 
 **Steps** - with [abapGit](https://abapgit.org), in this order:
 
 1. [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-2. [abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups)
-3. [abap2UI5-addons/layout-management](https://github.com/abap2UI5-addons/layout-management)
+2. [abap2UI5-addons/layout-management](https://github.com/abap2UI5-addons/layout-management) -
+   before popups, whose value help and search help popups use it and fail
+   activation without it
+3. [abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups)
 4. this repository - branch `main`, or `702` on NetWeaver 7.02 - 7.40
 
 **Start** - the app is `z2ui5_cl_tm_001`; pass the table to maintain as the
