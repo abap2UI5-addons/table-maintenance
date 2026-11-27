@@ -1188,6 +1188,24 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       client->message_toast_display( |Table { mv_table } does not exist.| ).
       mv_table_input = mv_table.
       CLEAR mv_table.
+      RETURN.
+    ENDIF.
+
+    " ROW_ID and SELKZ are the app's technical columns - the row id and the
+    " multi-edit selection. A table with a column of either name of its own
+    " had it taken over: the row ids overwrote the real ROW_ID values (and
+    " every save was refused as changed in the database), and Delete and
+    " Copy acted on the stored SELKZ values. Such a table is refused
+    TRY.
+        DATA(lt_comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
+      CATCH cx_root ##NO_HANDLER.
+    ENDTRY.
+    IF line_exists( lt_comp[ name = mc_row_id ] ) OR line_exists( lt_comp[ name = `SELKZ` ] ).
+      client->message_box_display( text = |Table { mv_table } has a column { mc_row_id } or SELKZ of its own, | &&
+                                          |which this app uses for itself - it cannot be maintained here.|
+                                   type = `error` ).
+      mv_table_input = mv_table.
+      CLEAR mv_table.
     ENDIF.
 
   ENDMETHOD.

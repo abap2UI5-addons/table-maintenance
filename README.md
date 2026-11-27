@@ -83,6 +83,10 @@ read-only mode on - a URL cannot widen or lift what the tile configured. Both
 are parameters the browser sends, not an authorization: restrict who may
 change which table with the authorizations of your system.
 
+A table with a column `ROW_ID` or `SELKZ` of its own cannot be maintained
+here: the app uses both names for its technical columns (the row id and the
+multi-edit selection), and refuses such a table with a message.
+
 From an app of your own, start it with the factory - the table, and
 optionally a configuration (`z2ui5_if_tm_001=>ty_s_config`):
 
