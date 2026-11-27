@@ -1710,7 +1710,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       " relative to the row: a namespaced column (/CWM/XCWMAT) is a level
       " of the row in the model - the cell, the sorter and the filter read
       " CWM/XCWMAT
-      " abap2ui5lint-disable-next-line unknown-builder-method -- component_path( ) is a static of the builder since abap2UI5 40e8a073, the linter 0.11 does not know it yet
       DATA(path) = z2ui5_cl_ui5_view_builder=>component_path( layout->fname ).
 
       DATA(col) = columns->ele( n = `Column` ns = `table`
