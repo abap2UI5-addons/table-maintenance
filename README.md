@@ -152,6 +152,21 @@ of the installation with the same name.
 
 ### Saving, transport and locking
 
+- **Client settings (SCC4).** On Standard ABAP, for a client-dependent
+  customizing table (delivery class C or G), the save follows the logon
+  client's change option (`T000-CCCORACTIV`) as SM30 does: with *no changes
+  allowed* nothing is saved, and with *automatic recording* a transport
+  request is required - **No Transport** opens the request popup again. Not
+  checked: the cross-client setting (`T000-CCNOCLIIND`) for cross-client
+  tables, *no transports allowed* (a request chosen there is used as
+  chosen) and tables of other delivery classes. The request popup offers your modifiable customizing
+  tasks only, so the entries of a cross-client table may be refused by the
+  request as well.
+- **ABAP Cloud records nothing on a transport request.** The request popup
+  of popups has no Cloud implementation yet, so there the save writes the
+  database without asking for a request, and the menu has no transport
+  entries.
+
 - **One LUW.** Save writes the database first - the deleted rows, then the
   rows of the table - and records the rows and the deletions on the transport
   request after that, with one `COMMIT WORK` for both. A database error rolls

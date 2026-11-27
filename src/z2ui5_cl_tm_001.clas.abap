@@ -264,6 +264,16 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS transport_all.
 
+    "! The logon client's change option for this table (SCC4,
+    "! T000-CCCORACTIV) as SM30 applies it - `1` automatic recording, `2` no
+    "! changes allowed, `3` no transports; empty when it does not apply:
+    "! ABAP Cloud, a cross-client table (T000-CCNOCLIIND is not checked) or
+    "! a table that is no customizing table (delivery class other than C or
+    "! G), or when T000 or DD02L cannot be read
+    METHODS get_client_change_option
+      RETURNING
+        VALUE(result) TYPE string.
+
     METHODS on_event_transport.
 
     METHODS render_ui_table
@@ -361,6 +371,34 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <del_org> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <del>     TYPE any.
     FIELD-SYMBOLS <saved>   TYPE STANDARD TABLE.
+
+    " the client setting first, as SM30 does: a client that allows no
+    " changes to customizing takes none from here either
+    DATA(lv_client_option) = get_client_change_option( ).
+    IF lv_client_option = `2`.
+      CLEAR mv_ucomm_tmp.
+      client->message_box_display( text = |Client { sy-mandt } allows no changes to customizing (SCC4) - the changes to { mv_table } were not saved.|
+                                   type = `error` ).
+      RETURN.
+    ENDIF.
+
+    " ABAP Cloud records nothing on a request (popups' bus_tr_add( ) has no
+    " Cloud branch, and its request list stays empty) - no popup to ask for
+    " one that would not be written
+    IF ms_transport IS INITIAL AND z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
+      ms_transport-locl = abap_true.
+    ENDIF.
+
+    " a client that records its customizing changes automatically: a
+    " request is required, No Transport is not enough
+    IF lv_client_option = `1` AND ms_transport-locl = abap_true.
+      CLEAR ms_transport.
+      client->message_toast_display( |Client { sy-mandt } records customizing changes automatically (SCC4) - choose a transport request.| ).
+      mv_ucomm_tmp = `BUTTON_SAVE`.
+      client->nav_app_call( app           = z2ui5_cl_popup_show_tr=>factory( )
+                            keep_messages = abap_true ).
+      RETURN.
+    ENDIF.
 
     IF ms_transport IS INITIAL.
 
@@ -580,6 +618,56 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       CLEAR keys.
 
     ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD get_client_change_option.
+
+    DATA lv_contflag TYPE c LENGTH 1.
+    DATA lv_option   TYPE c LENGTH 1.
+
+    IF z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_true.
+      RETURN.
+    ENDIF.
+
+    " the client-specific setting covers client-dependent tables only
+    IF NOT line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
+      RETURN.
+    ENDIF.
+
+    " by name: neither T000 nor DD02L is released for ABAP Cloud, where the
+    " class has to compile as well
+    DATA(lv_dd02l) = `DD02L`.
+    DATA(lv_t000)  = `T000`.
+    TRY.
+        " customizing only (delivery class C or G) - application data is
+        " not what the client's change option is about
+        SELECT SINGLE contflag
+          FROM (lv_dd02l)
+          WHERE tabname  = @mv_table
+            AND as4local = 'A'
+            AND as4vers  = '0000'
+          INTO @lv_contflag.
+        IF sy-subrc <> 0 OR ( lv_contflag <> 'C' AND lv_contflag <> 'G' ).
+          RETURN.
+        ENDIF.
+
+        " T000 is cross-client: its MANDT is the key to read, not the
+        " client handling of the statement - a dynamic condition, as for a
+        " dynamic table
+        DATA(lv_where) = |MANDT = '{ sy-mandt }'|.
+        SELECT SINGLE cccoractiv
+          FROM (lv_t000)
+          WHERE (lv_where)
+          INTO @lv_option.
+        IF sy-subrc = 0.
+          result = lv_option.
+        ENDIF.
+
+      CATCH cx_root.
+        " not readable here - the save goes on as before
+        CLEAR result.
+    ENDTRY.
 
   ENDMETHOD.
 
@@ -1424,19 +1512,24 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         )->a( n = `press` v = client->_event( 'BUTTON_SAVE' )
         )->a( n = `type` v = 'Success' ).
 
-    footer->ele( `MenuButton`
+    DATA(menu) = footer->ele( `MenuButton`
         )->a( n = `activeIcon` v = 'sap-icon://action-settings'
         )->ele( `menu`
-        )->ele( `Menu`
-        )->tag( `MenuItem`
-        )->a( n = `icon`  v = 'sap-icon://shipping-status'
-        )->a( n = `text`  v = get_txt( roll = 'ALLES_FUB' fallback = `Transport All Entries` )
-        )->a( n = `press` v = client->_event( 'TRANSPORT_ALL' )
-        )->tag( `MenuItem`
-        )->a( n = `icon`  v = 'sap-icon://shipping-status'
-        )->a( n = `text`  v = get_txt( roll = 'FUNCCHANGE' fallback = `Change Transport Request` )
-        )->a( n = `press` v = client->_event( 'TRANSPORT_CHANGE' )
-        )->tag( `MenuItem`
+        )->ele( `Menu` ).
+
+    " ABAP Cloud records nothing on a transport request - no menu for it
+    IF z2ui5_cl_tm_context=>check_abap_cloud( ) = abap_false.
+      menu->tag( `MenuItem`
+          )->a( n = `icon`  v = 'sap-icon://shipping-status'
+          )->a( n = `text`  v = get_txt( roll = 'ALLES_FUB' fallback = `Transport All Entries` )
+          )->a( n = `press` v = client->_event( 'TRANSPORT_ALL' )
+          )->tag( `MenuItem`
+          )->a( n = `icon`  v = 'sap-icon://shipping-status'
+          )->a( n = `text`  v = get_txt( roll = 'FUNCCHANGE' fallback = `Change Transport Request` )
+          )->a( n = `press` v = client->_event( 'TRANSPORT_CHANGE' ) ).
+    ENDIF.
+
+    menu->tag( `MenuItem`
         )->a( n = `icon`  v = 'sap-icon://key-user-settings'
         )->a( n = `text`  v = get_txt( roll = 'POWL_ADMIN_TY' fallback = `Multi-Edit` )
         )->a( n = `press` v = client->_event( 'BUTTON_EDIT' ) ).
