@@ -65,8 +65,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
     METHODS render_popup.
     METHODS on_event.
 
-    "! A text of data element roll - or fallback where the data element is
-    "! not on the system or has no text
+    "! A text of data element roll - or fallback, see
+    "! z2ui5_cl_tm_001=>get_text_by_dtel
     METHODS get_txt
       IMPORTING
         roll          TYPE clike
@@ -75,9 +75,8 @@ CLASS z2ui5_cl_tm_pop DEFINITION
       RETURNING
         VALUE(result) TYPE string.
 
-    "! The text of message no of class id - or fallback where the message
-    "! class or number is not on the system (a missing message answers with
-    "! its own class and number, or nothing)
+    "! The text of message no of class id - or fallback, see
+    "! z2ui5_cl_tm_001=>get_text_by_msg
     METHODS get_msg
       IMPORTING
         !id           TYPE clike
@@ -250,7 +249,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       DATA(enabled) = xsdbool( NOT ( dfies->keyflag = abap_true AND mv_edit = abap_true ) ).
 
-      IF dfies->fieldname = 'MANDT' OR mv_read_only = abap_true.
+      " the client - named MANDT, or CLIENT on ABAP Cloud - is the logon
+      " client on the save, whatever is entered
+      IF dfies->datatype = 'CLNT' OR dfies->fieldname = 'MANDT' OR mv_read_only = abap_true.
         enabled = abap_false.
       ENDIF.
 
@@ -491,45 +492,17 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
   METHOD get_txt.
 
-    TRY.
-        DATA(texts) = z2ui5_cl_tm_context=>rtti_get_data_element_texts( roll ).
-
-        CASE type.
-          WHEN 'L'.
-            result = texts-long.
-          WHEN 'M'.
-            result = texts-medium.
-          WHEN 'S'.
-            result = texts-short.
-          WHEN 'H'.
-            result = texts-header.
-          WHEN OTHERS.
-            result = texts-short.
-        ENDCASE.
-
-      CATCH cx_root.
-        CLEAR result.
-    ENDTRY.
-
-    IF result IS INITIAL.
-      result = fallback.
-    ENDIF.
+    result = z2ui5_cl_tm_001=>get_text_by_dtel( roll     = roll
+                                                type     = type
+                                                fallback = fallback ).
 
   ENDMETHOD.
 
   METHOD get_msg.
 
-    TRY.
-        result = z2ui5_cl_tm_context=>msg_get_by_msg( id = id
-                                                      no = no )-text.
-      CATCH cx_root.
-        CLEAR result.
-    ENDTRY.
-
-    IF result IS INITIAL
-        OR ( to_upper( result ) CS to_upper( id ) AND result CS no ).
-      result = fallback.
-    ENDIF.
+    result = z2ui5_cl_tm_001=>get_text_by_msg( id       = id
+                                               no       = no
+                                               fallback = fallback ).
 
   ENDMETHOD.
 
@@ -708,11 +681,19 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         " the context's conversion exit works in place, on the target field:
         " the entered value goes there first, as in the branch below
         <value_tab> = <value_struc>.
-        z2ui5_cl_tm_context=>conv_exit( EXPORTING convexit = dfies-convexit
-                                      CHANGING  value    = <value_tab> ).
+        TRY.
+            z2ui5_cl_tm_context=>conv_exit( EXPORTING convexit = dfies-convexit
+                                          CHANGING  value    = <value_tab> ).
+          CATCH z2ui5_cx_tm_error ##NO_HANDLER.
+            " the exit refused the value or does not exist - the value
+            " stays as it was entered
+        ENDTRY.
       ELSE.
 
-        IF dfies-lowercase = abap_false.
+        " upper case only where the DDIC says so: the field list of ABAP
+        " Cloud carries neither the lower-case flag nor the internal type,
+        " and a value is then kept as entered rather than changed
+        IF dfies-lowercase = abap_false AND dfies-inttype IS NOT INITIAL.
           <value_struc> = to_upper( <value_struc> ).
         ENDIF.
 
