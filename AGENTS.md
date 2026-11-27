@@ -73,8 +73,11 @@ pull request is open. A local `npm run check` clones their `main`. The 702
 config gives popups a folder of its own (`/popups-702`): the template fills
 `/popups` beside it with the pinned commit.
 
-CI: `ci` (abaplint Standard and Cloud, the abap2UI5-linter, the rename check -
-one job each), `ci-702` (writes and lints the downported branch `702`),
+CI: `ci` (abaplint Standard and Cloud, the abap2UI5-linter, the rename check
+and `npm run check:702` - one job each; `check:702` is the 7.02 gate of a
+pull request: `.github/scripts/check-702.sh` downports a scratch copy of
+`src/` in `build/702` and lints it with `.github/abaplint/abap_702.jsonc`,
+`src/` itself is never rewritten), `ci-702` (writes and lints the downported branch `702`),
 `build-rename`, `deploy-pages`, `bump-deps` - each a call of the template -
 and `bump-core` (the core release pin, above).
 
