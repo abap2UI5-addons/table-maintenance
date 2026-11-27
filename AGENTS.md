@@ -32,8 +32,8 @@ those need. `z2ui5_cx_tm_error` is `zabaputil_cx_util_error`, renamed and
 copied as-is. abapGit has no dependency management, so utilities are vendored,
 not referenced.
 
-1. **Nothing from the core's frozen `src/99/01`.** `z2ui5_cl_util*` and
-   `z2ui5_cx_util_error` are kept in abap2UI5 for compatibility only; every
+1. **Nothing of abap2UI5-ext.** `z2ui5_cl_util*` and `z2ui5_cx_util_error`
+   left the core with its `src/99/01` for abap2UI5-ext; every
    utility call goes through `z2ui5_cl_tm_context`, every utility exception is
    `z2ui5_cx_tm_error`.
 2. **New methods are added locally** to `z2ui5_cl_tm_context`; if abap-util
@@ -120,8 +120,8 @@ Three rules that are easy to get wrong:
    under `<form:SimpleForm>` it is `<form:content>`, never `<content>`.
 
 The frozen `z2ui5_cl_xml_view` is gone from here and must not come back. It sits
-in the core's `src/99`, outside the released API, and the view gate can read
-nothing built with it.
+in abap2UI5-ext (the core's `src/99` until 1.151.0), outside the released API,
+and the view gate can read nothing built with it.
 
 ## Conventions
 
