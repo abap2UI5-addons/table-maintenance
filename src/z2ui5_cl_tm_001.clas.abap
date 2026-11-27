@@ -209,6 +209,13 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     "! DEQUEUE_E_TABLE, the counterpart of lock( )
     METHODS unlock.
 
+    "! The VARKEY of lock( ) and unlock( ): the logon client for a
+    "! client-dependent table, typed RSTABLE-VARKEY - unbound for a table
+    "! without a client, which is locked as a whole
+    METHODS get_lock_varkey
+      RETURNING
+        VALUE(result) TYPE REF TO data.
+
     "! The lock for the changes that start now (add, edit, multi-edit): taken
     "! once and kept in a stateful session until the changes are saved or
     "! dropped. result is abap_false if another user holds it.
@@ -878,18 +885,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ENDIF.
 
     lv_tabname = mv_table.
-    " a client-dependent table is locked in the logon client only
-    IF line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
-      " VARKEY is passed by reference and must have the exact type of the
-      " module's parameter (RSTABLE-VARKEY - its length differs between
-      " releases); created by name, so the class also compiles on ABAP Cloud
-      TRY.
-          CREATE DATA lr_varkey TYPE (`RSTABLE-VARKEY`).
-          ASSIGN lr_varkey->* TO <varkey>.
-          <varkey> = sy-mandt.
-        CATCH cx_root ##NO_HANDLER.
-          " no such type: the whole table is locked, as without a client
-      ENDTRY.
+    lr_varkey = get_lock_varkey( ).
+    IF lr_varkey IS BOUND.
+      ASSIGN lr_varkey->* TO <varkey>.
     ENDIF.
 
     " called by name, so the class compiles where the module does not exist
@@ -963,17 +961,9 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     ENDIF.
 
     lv_tabname = mv_table.
-    IF line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
-      " VARKEY is passed by reference and must have the exact type of the
-      " module's parameter (RSTABLE-VARKEY - its length differs between
-      " releases); created by name, so the class also compiles on ABAP Cloud
-      TRY.
-          CREATE DATA lr_varkey TYPE (`RSTABLE-VARKEY`).
-          ASSIGN lr_varkey->* TO <varkey>.
-          <varkey> = sy-mandt.
-        CATCH cx_root ##NO_HANDLER.
-          " no such type: the whole table is locked, as without a client
-      ENDTRY.
+    lr_varkey = get_lock_varkey( ).
+    IF lr_varkey IS BOUND.
+      ASSIGN lr_varkey->* TO <varkey>.
     ENDIF.
 
     TRY.
@@ -999,6 +989,29 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         ENDIF.
       CATCH cx_root ##NO_HANDLER.
         " a lock that cannot be released goes with the session
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD get_lock_varkey.
+
+    FIELD-SYMBOLS <varkey> TYPE any.
+
+    " a client-dependent table is locked in the logon client only
+    IF NOT line_exists( mt_dfies[ keyflag = abap_true datatype = 'CLNT' ] ).
+      RETURN.
+    ENDIF.
+
+    " VARKEY is passed by reference and must have the exact type of the
+    " module's parameter (RSTABLE-VARKEY - its length differs between
+    " releases); created by name, so the class also compiles on ABAP Cloud
+    TRY.
+        CREATE DATA result TYPE (`RSTABLE-VARKEY`).
+        ASSIGN result->* TO <varkey>.
+        <varkey> = sy-mandt.
+      CATCH cx_root.
+        " no such type: the whole table is locked, as without a client
+        CLEAR result.
     ENDTRY.
 
   ENDMETHOD.
