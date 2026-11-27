@@ -7,6 +7,7 @@ output
 .github/abaplint/output/
 .github/abaplint/rename-deps/
 .github/abaplint/rename_run.json
+/.rename_run.json
 .github/out/
 site/node_modules/
 site/.vitepress/cache/
