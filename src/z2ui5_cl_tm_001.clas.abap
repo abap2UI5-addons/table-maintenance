@@ -2212,6 +2212,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <tab>         TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_changed> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <line>        TYPE any.
+    FIELD-SYMBOLS <line_tmp>    TYPE any.
+    FIELD-SYMBOLS <row>         TYPE any.
+    FIELD-SYMBOLS <index_tmp>   TYPE ty_s_row_index.
 
     " Kommen wir aus einer anderen APP
     IF client->get( )-check_on_navigated = abap_false.
@@ -2222,128 +2226,72 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         DATA(app) = CAST z2ui5_cl_tm_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         ASSIGN mt_table->* TO <tab>.
-        ASSIGN app->mt_data->* TO FIELD-SYMBOL(<app_tab>).
+        ASSIGN app->mt_data->* TO <tab_changed>.
 
-        IF <app_tab> <> <tab>.
+        IF <tab> IS ASSIGNED AND <tab_changed> IS ASSIGNED AND <tab_changed> <> <tab>.
           mv_change_active = abap_true.
 
           ASSIGN mt_table_tmp->* TO <tab_tmp>.
-          ASSIGN app->mt_data->* TO <tab_changed>.
 
-          " Check for deleted lines
-          LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
+          " the row ids of the rows shown before the popup and of those it
+          " returned, each looked up by hash - a loop over the rows for every
+          " row cost rows x rows dynamic ASSIGNs on every return of the popup.
+          " A row id is a UUID (set_row_id, button_copy, the popup's add), one
+          " row each
+          DATA(ids_shown) = get_row_index( <tab> ).
+          DATA(ids_changed) = get_row_index( <tab_changed> ).
 
-            FIELD-SYMBOLS <row> TYPE any.
+          " deleted lines: shown before, not returned - out of the working
+          " copy as well
+          LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
+            UNASSIGN <row>.
+            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row>.
+            " a check of its own: the 702 downport reads the table before
+            " the condition it is in, with <row> as the key
+            IF <row> IS NOT ASSIGNED.
+              CONTINUE.
+            ENDIF.
+            IF     line_exists( ids_shown[ row_id = <row> ] )
+               AND NOT line_exists( ids_changed[ row_id = <row> ] ).
+              DELETE <tab_tmp>.
+            ENDIF.
+          ENDLOOP.
+
+          " added lines: returned, not shown before - into the working copy
+          LOOP AT <tab_changed> ASSIGNING <line>.
             UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
-
-            DATA(found) = abap_false.
-
-            LOOP AT <tab_changed> ASSIGNING FIELD-SYMBOL(<line_changed>).
-
-              FIELD-SYMBOLS <row_changed> TYPE any.
-              UNASSIGN <row_changed>.
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
-              IF <row_changed> IS NOT ASSIGNED.
-                CONTINUE.
-              ENDIF.
-
-              IF <row_changed> = <row>.
-                found = abap_true.
-                EXIT.
-              ENDIF.
-
-            ENDLOOP.
-
-            IF found = abap_false.
-              " append <row> to t_delete
-
-              LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
-
-                FIELD-SYMBOLS <row_tmp> TYPE any.
-                UNASSIGN <row_tmp>.
-                ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
-                IF <row_tmp> IS NOT ASSIGNED.
-                  CONTINUE.
-                ENDIF.
-
-                IF <row> = <row_tmp>.
-                  DELETE <tab_tmp>.
-                  EXIT.
-                ENDIF.
-
-              ENDLOOP.
-
+            IF NOT line_exists( ids_shown[ row_id = <row> ] ).
+              INSERT <line> INTO TABLE <tab_tmp>.
             ENDIF.
-
           ENDLOOP.
 
-          " Check for added lines
-          LOOP AT <tab_changed> ASSIGNING <line_changed>.
+          <tab> = <tab_changed>.
 
-            UNASSIGN <row_changed>.
-            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
-            IF <row_changed> IS NOT ASSIGNED.
-              CONTINUE.
-            ENDIF.
-
-            found = abap_false.
-
-            LOOP AT <tab> ASSIGNING <line>.
-
-              UNASSIGN <row>.
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
-              IF <row> IS NOT ASSIGNED.
-                CONTINUE.
-              ENDIF.
-
-              IF <row_changed> = <row>.
-                found = abap_true.
-                EXIT.
-              ENDIF.
-
-            ENDLOOP.
-
-            IF found = abap_false.
-              INSERT <line_changed> INTO TABLE <tab_tmp>.
-            ENDIF.
-
-          ENDLOOP.
-
-
-          <tab> = <app_tab>.
-
-          " Transfer changes for TAB to TMP_TAB.
+          " transfer the changes of TAB to TMP_TAB - to the first row of the
+          " working copy with the same id
+          DATA(ids_tmp) = get_row_index( <tab_tmp> ).
           LOOP AT <tab> ASSIGNING <line>.
-
             UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
 
-            LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
+            UNASSIGN <index_tmp>.
+            ASSIGN ids_tmp[ row_id = <row> ] TO <index_tmp>.
+            IF <index_tmp> IS NOT ASSIGNED.
+              CONTINUE.
+            ENDIF.
 
-              UNASSIGN <row_tmp>.
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
-              IF <row_tmp> IS NOT ASSIGNED.
-                CONTINUE.
-              ENDIF.
-
-              IF <row_tmp> = <row>.
-                IF <line> <> <line_tmp>.
-                  <line_tmp> = <line>.
-                ENDIF.
-                EXIT.
-              ELSE.
-                CONTINUE.
-              ENDIF.
-
-            ENDLOOP.
-
+            UNASSIGN <line_tmp>.
+            ASSIGN <tab_tmp>[ <index_tmp>-tabix ] TO <line_tmp>.
+            IF <line_tmp> IS ASSIGNED.
+              <line_tmp> = <line>.
+            ENDIF.
           ENDLOOP.
 
         ENDIF.
