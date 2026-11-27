@@ -88,6 +88,12 @@ CLASS z2ui5_cl_tm_001 DEFINITION
         key    TYPE string,
       END OF ty_s_keys.
     TYPES ty_t_keys TYPE STANDARD TABLE OF ty_s_keys WITH EMPTY KEY.
+    TYPES:
+      BEGIN OF ty_s_row_index,
+        row_id TYPE string,
+        tabix  TYPE i,
+      END OF ty_s_row_index.
+    TYPES ty_t_row_index TYPE HASHED TABLE OF ty_s_row_index WITH UNIQUE KEY row_id.
 
     DATA mv_table          TYPE string.
     DATA mt_dfies          TYPE z2ui5_cl_tm_context=>ty_t_dfies.
@@ -156,6 +162,22 @@ CLASS z2ui5_cl_tm_001 DEFINITION
         !table        TYPE STANDARD TABLE
       RETURNING
         VALUE(result) TYPE ty_t_keys.
+
+    "! The ROW_ID of every row of table with the index of the first row
+    "! that carries it - a lookup by hash instead of a loop over the rows
+    METHODS get_row_index
+      IMPORTING
+        !table        TYPE STANDARD TABLE
+      RETURNING
+        VALUE(result) TYPE ty_t_row_index.
+
+    "! Whether mt_table has a row for every ROW_ID of the working copy
+    "! mt_table_tmp - it has to in multi-edit: the save of multi-edit and its
+    "! way back to normal mode take mt_table for the whole table, and the
+    "! save deletes the rows missing from it
+    METHODS check_rows_complete
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS get_comp
       RETURNING
@@ -410,6 +432,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       CLEAR mv_ucomm_tmp.
 
       IF mv_multi_edit = abap_true.
+        " the cell edits of multi-edit are in mt_table only - so it is the
+        " table saved, and every row of the working copy has to be in it:
+        " a row missing would be deleted below
+        IF check_rows_complete( ) = abap_false.
+          client->message_box_display( text = |The rows shown are not all rows of { mv_table } - nothing was saved. Refresh the table and enter the changes again.|
+                                       type = `error` ).
+          RETURN.
+        ENDIF.
         ASSIGN mt_table->* TO <tab>.
       ELSE.
         " Filter issue
@@ -618,6 +648,60 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       CLEAR keys.
 
     ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD get_row_index.
+
+    FIELD-SYMBOLS <line> TYPE any.
+    FIELD-SYMBOLS <id>   TYPE any.
+
+    LOOP AT table ASSIGNING <line>.
+      DATA(index) = sy-tabix.
+
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
+      IF <id> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
+
+      " the first row of an id wins - a later one is not inserted
+      INSERT VALUE #( row_id = <id>
+                      tabix  = index ) INTO TABLE result.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD check_rows_complete.
+
+    FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <line>    TYPE any.
+    FIELD-SYMBOLS <id>      TYPE any.
+
+    ASSIGN mt_table->* TO <tab>.
+    ASSIGN mt_table_tmp->* TO <tab_tmp>.
+    IF <tab> IS NOT ASSIGNED OR <tab_tmp> IS NOT ASSIGNED.
+      RETURN.
+    ENDIF.
+
+    DATA(ids) = get_row_index( <tab> ).
+
+    LOOP AT <tab_tmp> ASSIGNING <line>.
+      UNASSIGN <id>.
+      ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <id>.
+      " a check of its own: the 702 downport reads ids before the condition
+      " it is in, with <id> as the key
+      IF <id> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
+      IF NOT line_exists( ids[ row_id = <id> ] ).
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+
+    result = abap_true.
 
   ENDMETHOD.
 
@@ -1698,7 +1782,16 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       WHEN 'BUTTON_SEARCH'.
 
-        search( ).
+        " normal mode only - multi-edit shows no search field, and its
+        " mt_table has to stay the whole table: the cell edits of
+        " multi-edit live in mt_table alone (search( ) would overwrite them
+        " with mt_table_tmp), and its save and its way back to normal mode
+        " take mt_table as the whole table (a filtered one would delete
+        " every row the filter hid). A search event in multi-edit - a
+        " stale or forged request - is ignored
+        IF mv_multi_edit = abap_false.
+          search( ).
+        ENDIF.
 
       WHEN 'BUTTON_SAVE'.
 
@@ -1733,6 +1826,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         IF mv_multi_edit = abap_false AND edit_lock( ) = abap_false.
           RETURN.
         ENDIF.
+        " back to normal mode, mt_table becomes the working copy below -
+        " only when it is the whole table, or normal mode's save would
+        " delete the rows missing from it
+        IF mv_multi_edit = abap_true AND check_rows_complete( ) = abap_false.
+          client->message_box_display( text = |The rows shown are not all rows of { mv_table } - refresh the table and enter the changes again.|
+                                       type = `error` ).
+          RETURN.
+        ENDIF.
 
         mv_multi_edit = xsdbool( mv_multi_edit = abap_false ).
         " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
@@ -1746,7 +1847,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           search( ).
         ELSE.
           " multi-edit changes mt_table only; normal mode saves and searches
-          " from mt_table_tmp, which would drop those changes
+          " from mt_table_tmp, which would drop those changes. mt_table is
+          " the whole table here: entering multi-edit cleared the search,
+          " no search runs in multi-edit (BUTTON_SEARCH) and
+          " check_rows_complete( ) has said so above
           ASSIGN mt_table->* TO FIELD-SYMBOL(<tab_edit>).
           ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<tab_edit_tmp>).
           " a cell changed without a submit has not set mv_change_active
@@ -2108,6 +2212,10 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     FIELD-SYMBOLS <tab>         TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_changed> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <line>        TYPE any.
+    FIELD-SYMBOLS <line_tmp>    TYPE any.
+    FIELD-SYMBOLS <row>         TYPE any.
+    FIELD-SYMBOLS <index_tmp>   TYPE ty_s_row_index.
 
     " Kommen wir aus einer anderen APP
     IF client->get( )-check_on_navigated = abap_false.
@@ -2118,128 +2226,72 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
         DATA(app) = CAST z2ui5_cl_tm_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
 
         ASSIGN mt_table->* TO <tab>.
-        ASSIGN app->mt_data->* TO FIELD-SYMBOL(<app_tab>).
+        ASSIGN app->mt_data->* TO <tab_changed>.
 
-        IF <app_tab> <> <tab>.
+        IF <tab> IS ASSIGNED AND <tab_changed> IS ASSIGNED AND <tab_changed> <> <tab>.
           mv_change_active = abap_true.
 
           ASSIGN mt_table_tmp->* TO <tab_tmp>.
-          ASSIGN app->mt_data->* TO <tab_changed>.
 
-          " Check for deleted lines
-          LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
+          " the row ids of the rows shown before the popup and of those it
+          " returned, each looked up by hash - a loop over the rows for every
+          " row cost rows x rows dynamic ASSIGNs on every return of the popup.
+          " A row id is a UUID (set_row_id, button_copy, the popup's add), one
+          " row each
+          DATA(ids_shown) = get_row_index( <tab> ).
+          DATA(ids_changed) = get_row_index( <tab_changed> ).
 
-            FIELD-SYMBOLS <row> TYPE any.
+          " deleted lines: shown before, not returned - out of the working
+          " copy as well
+          LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
+            UNASSIGN <row>.
+            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row>.
+            " a check of its own: the 702 downport reads the table before
+            " the condition it is in, with <row> as the key
+            IF <row> IS NOT ASSIGNED.
+              CONTINUE.
+            ENDIF.
+            IF     line_exists( ids_shown[ row_id = <row> ] )
+               AND NOT line_exists( ids_changed[ row_id = <row> ] ).
+              DELETE <tab_tmp>.
+            ENDIF.
+          ENDLOOP.
+
+          " added lines: returned, not shown before - into the working copy
+          LOOP AT <tab_changed> ASSIGNING <line>.
             UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
-
-            DATA(found) = abap_false.
-
-            LOOP AT <tab_changed> ASSIGNING FIELD-SYMBOL(<line_changed>).
-
-              FIELD-SYMBOLS <row_changed> TYPE any.
-              UNASSIGN <row_changed>.
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
-              IF <row_changed> IS NOT ASSIGNED.
-                CONTINUE.
-              ENDIF.
-
-              IF <row_changed> = <row>.
-                found = abap_true.
-                EXIT.
-              ENDIF.
-
-            ENDLOOP.
-
-            IF found = abap_false.
-              " append <row> to t_delete
-
-              LOOP AT <tab_tmp> ASSIGNING FIELD-SYMBOL(<line_tmp>).
-
-                FIELD-SYMBOLS <row_tmp> TYPE any.
-                UNASSIGN <row_tmp>.
-                ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
-                IF <row_tmp> IS NOT ASSIGNED.
-                  CONTINUE.
-                ENDIF.
-
-                IF <row> = <row_tmp>.
-                  DELETE <tab_tmp>.
-                  EXIT.
-                ENDIF.
-
-              ENDLOOP.
-
+            IF NOT line_exists( ids_shown[ row_id = <row> ] ).
+              INSERT <line> INTO TABLE <tab_tmp>.
             ENDIF.
-
           ENDLOOP.
 
-          " Check for added lines
-          LOOP AT <tab_changed> ASSIGNING <line_changed>.
+          <tab> = <tab_changed>.
 
-            UNASSIGN <row_changed>.
-            ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_changed> TO <row_changed>.
-            IF <row_changed> IS NOT ASSIGNED.
-              CONTINUE.
-            ENDIF.
-
-            found = abap_false.
-
-            LOOP AT <tab> ASSIGNING <line>.
-
-              UNASSIGN <row>.
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
-              IF <row> IS NOT ASSIGNED.
-                CONTINUE.
-              ENDIF.
-
-              IF <row_changed> = <row>.
-                found = abap_true.
-                EXIT.
-              ENDIF.
-
-            ENDLOOP.
-
-            IF found = abap_false.
-              INSERT <line_changed> INTO TABLE <tab_tmp>.
-            ENDIF.
-
-          ENDLOOP.
-
-
-          <tab> = <app_tab>.
-
-          " Transfer changes for TAB to TMP_TAB.
+          " transfer the changes of TAB to TMP_TAB - to the first row of the
+          " working copy with the same id
+          DATA(ids_tmp) = get_row_index( <tab_tmp> ).
           LOOP AT <tab> ASSIGNING <line>.
-
             UNASSIGN <row>.
             ASSIGN COMPONENT mc_row_id OF STRUCTURE <line> TO <row>.
             IF <row> IS NOT ASSIGNED.
               CONTINUE.
             ENDIF.
 
-            LOOP AT <tab_tmp> ASSIGNING <line_tmp>.
+            UNASSIGN <index_tmp>.
+            ASSIGN ids_tmp[ row_id = <row> ] TO <index_tmp>.
+            IF <index_tmp> IS NOT ASSIGNED.
+              CONTINUE.
+            ENDIF.
 
-              UNASSIGN <row_tmp>.
-              ASSIGN COMPONENT mc_row_id OF STRUCTURE <line_tmp> TO <row_tmp>.
-              IF <row_tmp> IS NOT ASSIGNED.
-                CONTINUE.
-              ENDIF.
-
-              IF <row_tmp> = <row>.
-                IF <line> <> <line_tmp>.
-                  <line_tmp> = <line>.
-                ENDIF.
-                EXIT.
-              ELSE.
-                CONTINUE.
-              ENDIF.
-
-            ENDLOOP.
-
+            UNASSIGN <line_tmp>.
+            ASSIGN <tab_tmp>[ <index_tmp>-tabix ] TO <line_tmp>.
+            IF <line_tmp> IS ASSIGNED.
+              <line_tmp> = <line>.
+            ENDIF.
           ENDLOOP.
 
         ENDIF.
