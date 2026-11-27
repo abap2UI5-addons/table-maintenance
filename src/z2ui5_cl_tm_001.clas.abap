@@ -1462,17 +1462,31 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " the fields of the table that are shown - not the technical columns
+    " ROW_ID (a UUID) and SELKZ, not the client, not a hidden column - each
+    " on a line of its own, so a hit never spans two fields
+    DATA(fields) = VALUE string_table( ).
+    LOOP AT mt_dfies INTO DATA(dfies) WHERE datatype <> 'CLNT' AND fieldname <> 'MANDT'.
+      IF mo_layout IS BOUND.
+        FIELD-SYMBOLS <layout> LIKE LINE OF mo_layout->ms_layout-t_layout.
+        UNASSIGN <layout>.
+        ASSIGN mo_layout->ms_layout-t_layout[ fname = dfies-fieldname ] TO <layout>.
+        IF <layout> IS ASSIGNED AND <layout>-visible = abap_false.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+      INSERT CONV string( dfies-fieldname ) INTO TABLE fields.
+    ENDLOOP.
+
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<f_row>).
       DATA(lv_row) = ``.
-      DATA(lv_index) = 1.
-      DO.
-        ASSIGN COMPONENT lv_index OF STRUCTURE <f_row> TO FIELD-SYMBOL(<field>).
+      LOOP AT fields INTO DATA(field).
+        ASSIGN COMPONENT field OF STRUCTURE <f_row> TO FIELD-SYMBOL(<field>).
         IF sy-subrc <> 0.
-          EXIT.
+          CONTINUE.
         ENDIF.
-        lv_row = lv_row && <field>.
-        lv_index = lv_index + 1.
-      ENDDO.
+        lv_row = |{ lv_row }{ <field> }{ cl_abap_char_utilities=>newline }|.
+      ENDLOOP.
 
       IF lv_row NS mv_search_value.
         DELETE <tab>.
