@@ -1,0 +1,28 @@
+{
+  "master": "abap-util/abap-util",
+  "commit": "305e491ec17c324b0e59e4407cec6d6d009131aa",
+  "rename": [
+    [
+      "z2ui5_cl_tm_context",
+      "zabaputil_cl_util_context"
+    ],
+    [
+      "z2ui5_cx_tm_error",
+      "zabaputil_cx_util_error"
+    ]
+  ],
+  "copies": [
+    {
+      "copy": "src/z2ui5_cl_tm_context.clas.abap",
+      "master": "src/zabaputil_cl_util_context.clas.abap",
+      "trimmed": true,
+      "settled": {
+        "db_reset_table_buffer": "EXCEPTIONS OTHERS = 1 where the master has 2 (abap-util #95) - sy-subrc is not read after the call, so both behave the same; taken over with the next refresh"
+      }
+    },
+    {
+      "copy": "src/z2ui5_cx_tm_error.clas.abap",
+      "master": "src/zabaputil_cx_util_error.clas.abap"
+    }
+  ]
+}

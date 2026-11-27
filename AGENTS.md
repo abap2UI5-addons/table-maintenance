@@ -45,9 +45,30 @@ not referenced.
    `classic_exceptions_overlap`, `prefer_string_template`); do not reformat
    them.
 
+`.github/abap-util.json` names the copies and their masters for abap-util's
+`sync-check`: with abap-util checked out next to this repository,
+`node ../abap-util/.github/scripts/sync-check.mjs --consumer . --report`
+lists every method whose body or declaration differs from the master and
+every method only this copy has. `commit` is the abap-util commit the copies
+match: run the script without `--report` at that commit and it fails on any
+difference that is not named under `settled` or `own`. After a refresh, set
+`commit` to the commit the copies were taken from.
+
 ## Dependencies
 
-- [abap2UI5](https://github.com/abap2UI5/abap2UI5) — the framework
+- [abap2UI5](https://github.com/abap2UI5/abap2UI5) — the framework, **pinned
+  to a release tag** (the `"branch"` key of the core dependency, abap2UI5
+  CONVENTIONS §9): users install a release next to this addon, so the checks
+  run against that release and not against the framework's `main`. The three
+  abaplint configs carry the pin (`abaplint.jsonc`,
+  `.github/abaplint/abap_cloud.jsonc` and the downported `<tag>-702` form in
+  `.github/abaplint/abap_702.jsonc`; the namespace rename clones the core at
+  the pin of `abaplint.jsonc`); read and move it only with
+  `scripts/core-pin.mjs` (`get` fails when they disagree). `bump-deps.yaml`
+  moves it monthly to the newest release, in its one pull request
+  (`bump-core.yaml` does it alone, by hand), and the scheduled run of `ci`
+  lints once against the core's `main` as the canary (`core-pin.mjs set
+  main`, never committed)
 - [layout-management](https://github.com/abap2UI5-addons/layout-management) — variant-managed table and form layouts
 - [popups](https://github.com/abap2UI5-addons/popups) — value help and search help
 
@@ -61,9 +82,13 @@ pull request is open. A local `npm run check` clones their `main`. The 702
 config gives popups a folder of its own (`/popups-702`): the template fills
 `/popups` beside it with the pinned commit.
 
-CI: `ci` (abaplint Standard and Cloud, the abap2UI5-linter, the rename check -
-one job each), `ci-702` (writes and lints the downported branch `702`),
-`build-rename`, `deploy-pages`, `bump-deps` - each a call of the template.
+CI: `ci` (abaplint Standard and Cloud, the abap2UI5-linter, the rename check
+and `npm run check:702` - one job each; `check:702` is the 7.02 gate of a
+pull request: `.github/scripts/check-702.sh` downports a scratch copy of
+`src/` in `build/702` and lints it with `.github/abaplint/abap_702.jsonc`,
+`src/` itself is never rewritten), `ci-702` (writes and lints the downported branch `702`),
+`build-rename`, `deploy-pages`, `bump-deps` - each a call of the template -
+and `bump-core` (the core release pin, above).
 
 ## Build and verify
 

@@ -9,6 +9,7 @@
     "rename": "node .github/scripts/rename.mjs",
     "lint": "abaplint ./abaplint.jsonc",
     "check:cloud": "abaplint .github/abaplint/abap_cloud.jsonc",
+    "check:702": "bash .github/scripts/check-702.sh",
     "check:abap2ui5": "abap2ui5lint",
     "check": "npm run lint && npm run check:cloud && npm run check:abap2ui5 && npm run rename",
     "test": "npm run check",
@@ -31,9 +32,6 @@
     "@abap2ui5/linter": "^0.13.0",
     "@abap2ui5/linter-render": "^0.13.0",
     "@abaplint/cli": "^2.120.121",
-    "@abaplint/database-sqlite": "^2.14.12",
-    "@abaplint/runtime": "^2.14.15",
-    "@abaplint/transpiler-cli": "^2.14.15",
     "@types/node": "^26.6.6"
   },
   "dependencies": {

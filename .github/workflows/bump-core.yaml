@@ -1,0 +1,60 @@
+# Moves the abap2UI5 release this addon is checked against (the "branch" key
+# of the core dependency in every abaplint config, kept equal by
+# scripts/core-pin.mjs) to the newest release tag, and opens a pull request -
+# but only after abaplint passed on the new tag, so a framework release that
+# breaks this addon fails here instead of landing on main. abap2UI5
+# CONVENTIONS §9: a pin nobody moves is its own defect.
+name: bump-core
+
+# no schedule: bump-deps.yaml does this once a month, in its one
+# pull request; a dispatch still runs it on its own
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: bump-core
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '22'
+        cache: 'npm'
+    - run: npm ci
+
+    - name: Move the core pin to the newest release tag
+      id: pin
+      run: |
+        set -euo pipefail
+        CURRENT=$(node scripts/core-pin.mjs get)
+        LATEST=$(node scripts/core-pin.mjs latest)
+        echo "version=$LATEST" >> "$GITHUB_OUTPUT"
+        if [ "$CURRENT" = "$LATEST" ]; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        else
+          node scripts/core-pin.mjs set "$LATEST"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    # the gates that resolve the core - they run before the PR exists
+    - if: steps.pin.outputs.changed == 'true'
+      run: npm run lint && npm run check:cloud && npm run rename
+
+    - if: steps.pin.outputs.changed == 'true'
+      uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      with:
+        branch: bump-core
+        title: 'Bump the abap2UI5 core pin to ${{ steps.pin.outputs.version }}'
+        commit-message: 'Bump the abap2UI5 core pin to ${{ steps.pin.outputs.version }}'
+        body: |
+          Weekly move of the abap2UI5 release this addon is checked against
+          (the abaplint configs) to ${{ steps.pin.outputs.version }}. abaplint
+          ran against the new tag in the workflow that opened this pull request.
