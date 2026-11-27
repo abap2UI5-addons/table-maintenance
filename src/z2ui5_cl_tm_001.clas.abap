@@ -599,13 +599,17 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
       CLEAR mv_ucomm_tmp.
 
-      " outside multi-edit a search leaves only its hits in mt_table - all
-      " rows are in mt_table_tmp, which is what the save writes as well
-      IF mv_multi_edit = abap_true.
-        ASSIGN mt_table->* TO <tab>.
-      ELSE.
-        ASSIGN mt_table_tmp->* TO <tab>.
+      " the entries as they are in the database - not the rows on the
+      " screen: a row added or changed and not yet saved is no entry the
+      " request can carry, and one deleted and not yet saved still is
+      DATA(db) = get_db_rows( ).
+      IF db IS NOT BOUND.
+        client->message_toast_display( get_msg( id       = '42'
+                                                no       = `316`
+                                                fallback = `Transport request error` ) ).
+        RETURN.
       ENDIF.
+      ASSIGN db->* TO <tab>.
 
       DATA(comp) = z2ui5_cl_tm_context=>rtti_get_t_attri_by_table_name( mv_table ).
 
@@ -628,8 +632,7 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
       ENDTRY.
       TRY.
           " the entries of the table only - deletions reach the transport
-          " with the save that executes them; pending ones are not in the
-          " database, and a request must not delete what is still there
+          " with the save that executes them
           z2ui5_cl_popup_show_tr=>add_data_to_tranport( ir_data      = t_table
                                                       iv_tabname   = mv_table
                                                       is_transport = ms_transport ).
@@ -642,10 +645,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           RETURN.
       ENDTRY.
       " MESSAGE s215(rmps_general) WITH ms_transport-transport INTO msg. "Transporteintrag erfolgreich geschrieben (&1)
-      client->message_toast_display( get_msg( id       = 'rmps_general'
-                                              no       = `215`
-                                              v1       = ms_transport-transport
-                                              fallback = |Transport entries written ({ ms_transport-transport })| ) ).
+      DATA(text) = get_msg( id       = 'rmps_general'
+                            no       = `215`
+                            v1       = ms_transport-transport
+                            fallback = |Transport entries written ({ ms_transport-transport })| ).
+      IF mv_change_active = abap_true.
+        text = |{ text } - the changes not saved yet are not on the request|.
+      ENDIF.
+      client->message_toast_display( text ).
 
     ENDIF.
   ENDMETHOD.
