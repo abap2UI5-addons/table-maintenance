@@ -52,11 +52,19 @@ To only look into a table, without changing it, use
   7.50 or higher
 - NetWeaver 7.02 - 7.40: the branch `702`, downported automatically from
   `main` on every push - pull abap2UI5, popups and layout-management from their `702` branches as well
-- [abap2UI5](https://github.com/abap2UI5/abap2UI5)
+- [abap2UI5](https://github.com/abap2UI5/abap2UI5) - release 1.151.0 or
+  higher
 - [abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups) - value
-  help, search help and the transport request popup
+  help, search help and the transport request popup; the version for abap2UI5
+  1.151.0 or newer (26 Nov 2026)
 - [abap2UI5-addons/layout-management](https://github.com/abap2UI5-addons/layout-management) -
   the column layouts of the table
+
+An older abap2UI5 or popups does not activate with this version: errors such
+as *"Method COMPONENT_PATH is unknown"* or *"The formal parameter IV_COMMIT
+does not exist"* mean the dependencies are older than this repository - pull
+abap2UI5 and popups again (all objects, also the ones abapGit lists as
+unchanged) and then this repository.
 
 **Steps** - with [abapGit](https://abapgit.org), in this order:
 
