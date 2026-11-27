@@ -41,7 +41,9 @@ not referenced.
 3. **Periodic AI sync-back** merges what was added or fixed here into abap-util.
 4. **Keep the copies close to the master.** `abaplint.jsonc` excludes both files
    from the style rules the master does not follow (`avoid_use`,
-   `slow_parameter_passing`); do not reformat them.
+   `slow_parameter_passing`, `align_pseudo_comments`,
+   `classic_exceptions_overlap`, `prefer_string_template`); do not reformat
+   them.
 
 ## Dependencies
 

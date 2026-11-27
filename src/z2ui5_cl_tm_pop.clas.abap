@@ -681,8 +681,13 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
         " the context's conversion exit works in place, on the target field:
         " the entered value goes there first, as in the branch below
         <value_tab> = <value_struc>.
-        z2ui5_cl_tm_context=>conv_exit( EXPORTING convexit = dfies-convexit
-                                      CHANGING  value    = <value_tab> ).
+        TRY.
+            z2ui5_cl_tm_context=>conv_exit( EXPORTING convexit = dfies-convexit
+                                          CHANGING  value    = <value_tab> ).
+          CATCH z2ui5_cx_tm_error ##NO_HANDLER.
+            " the exit refused the value or does not exist - the value
+            " stays as it was entered
+        ENDTRY.
       ELSE.
 
         " upper case only where the DDIC says so: the field list of ABAP

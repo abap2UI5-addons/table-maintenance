@@ -77,7 +77,10 @@
     "check_abstract": true,
     "check_text_elements": true,
     "check_transformation_exists": true,
-    "classic_exceptions_overlap": true,
+    "classic_exceptions_overlap": {
+      // the vendored abap-util copies stay close to the master (AGENTS.md)
+      "exclude": ["z2ui5_cl_tm_context", "z2ui5_cx_tm_error"]
+    },
     "clear_exporting_parameters": true,
     "cloud_types": true,
     "colon_missing_space": true,
@@ -431,7 +434,10 @@
     // abap2UI5's settings (or the app rule set's, .github/abaplint/app-rules.json,
     // where abap2UI5 has none)
     "alias_never_reassigned": true,
-    "align_pseudo_comments": true,
+    "align_pseudo_comments": {
+      // the vendored abap-util copies stay close to the master (AGENTS.md)
+      "exclude": ["z2ui5_cl_tm_context", "z2ui5_cx_tm_error"]
+    },
     "align_type_expressions": true,
     "bdef_check_syntax": true,
     "bdef_parser_error": true,
@@ -688,7 +694,11 @@
     "prefer_inline": false,
     "prefer_inline_cast": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "prefer_insert_into_table": false,
-    "prefer_string_template": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
+    // on, so none come back (off in the abap2UI5 core) - except in the vendored copies
+    "prefer_string_template": {
+      // the vendored abap-util copies stay close to the master (AGENTS.md)
+      "exclude": ["z2ui5_cl_tm_context", "z2ui5_cx_tm_error"]
+    },
     // off as in abap2UI5's abaplint.jsonc: the commented MESSAGE statements
     // in z2ui5_cl_tm_pop / z2ui5_cl_tm_001 name the T100 message a text comes
     // from (where-used), and the vendored z2ui5_cl_tm_context keeps the
