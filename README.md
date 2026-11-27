@@ -77,7 +77,15 @@ URL parameter `table`:
 Without the parameter (and without a launchpad startup parameter `table`) the
 app opens no table; it asks for the table name first. Add `&readonly=X` (URL
 or launchpad startup parameter) to show the table without any way to change
-it.
+it. In the launchpad, a tile's startup parameter `table` wins over a URL
+parameter of the same name, and `readonly=X` from either source switches the
+read-only mode on - a URL cannot widen or lift what the tile configured. Both
+are parameters the browser sends, not an authorization: restrict who may
+change which table with the authorizations of your system.
+
+A table with a column `ROW_ID` or `SELKZ` of its own cannot be maintained
+here: the app uses both names for its technical columns (the row id and the
+multi-edit selection), and refuses such a table with a message.
 
 From an app of your own, start it with the factory - the table, and
 optionally a configuration (`z2ui5_if_tm_001=>ty_s_config`):
@@ -114,6 +122,10 @@ parameters or launchpad startup parameters of the same names:
 ?app_start=z2ui5_cl_tm_002&tables=<TABLE_1>,<TABLE_2>&title=<TITLE>
 ```
 
+The cluster opens only the tables of that list - a tab key the browser sends
+for any other table is ignored - and a tile's startup parameter `tables`
+wins over the URL parameter.
+
 ### Parallel installation (namespace rename)
 
 To run a second copy next to the original in the same system, rename it the
@@ -139,6 +151,21 @@ of the installation with the same name.
    entries on a transport request or changes the request.
 
 ### Saving, transport and locking
+
+- **Client settings (SCC4).** On Standard ABAP, for a client-dependent
+  customizing table (delivery class C or G), the save follows the logon
+  client's change option (`T000-CCCORACTIV`) as SM30 does: with *no changes
+  allowed* nothing is saved, and with *automatic recording* a transport
+  request is required - **No Transport** opens the request popup again. Not
+  checked: the cross-client setting (`T000-CCNOCLIIND`) for cross-client
+  tables, *no transports allowed* (a request chosen there is used as
+  chosen) and tables of other delivery classes. The request popup offers your modifiable customizing
+  tasks only, so the entries of a cross-client table may be refused by the
+  request as well.
+- **ABAP Cloud records nothing on a transport request.** The request popup
+  of popups has no Cloud implementation yet, so there the save writes the
+  database without asking for a request, and the menu has no transport
+  entries.
 
 - **One LUW.** Save writes the database first - the deleted rows, then the
   rows of the table - and records the rows and the deletions on the transport
