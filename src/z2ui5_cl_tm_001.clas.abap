@@ -93,10 +93,7 @@ CLASS z2ui5_cl_tm_001 DEFINITION
     DATA mt_dfies          TYPE z2ui5_cl_tm_context=>ty_t_dfies.
     DATA client            TYPE REF TO z2ui5_if_client.
     DATA check_initialized TYPE abap_bool.
-    DATA mv_f4_fname       TYPE string.
-    DATA mv_shlpfield      TYPE string.
     DATA mv_multi_edit     TYPE abap_bool.
-    DATA mv_key_error      TYPE abap_bool.
 
     DATA mv_ucomm_tmp      TYPE string.
     " the edit lock is held in a stateful session, from the first change
@@ -1934,8 +1931,6 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD check_input.
-
-    CLEAR mv_key_error.
 
     ASSIGN mt_table_tmp->* TO FIELD-SYMBOL(<mt_table_tmp>).
     ASSIGN mt_table->* TO FIELD-SYMBOL(<mt_table>).
