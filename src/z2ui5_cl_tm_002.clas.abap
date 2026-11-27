@@ -97,15 +97,17 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     DATA lt_name TYPE string_table.
     DATA lv_name TYPE string.
 
-    DATA(lv_tables) = z2ui5_cl_tm_context=>url_param_get( val = `tables`
-                                                        url = client->get( )-s_config-search ).
+    " the launchpad startup parameter first: a tile's tables are the scope
+    " the administrator gave it, which a URL parameter the user adds must
+    " not widen; without a tile (no startup parameter) the URL names them
+    DATA(lt_startup) = client->get( )-t_comp_params.
+    DATA(lv_tables) = VALUE string( lt_startup[ n = `tables` ]-v OPTIONAL ).
+    IF lv_tables IS INITIAL.
+      lv_tables = z2ui5_cl_tm_context=>url_param_get( val = `tables`
+                                                    url = client->get( )-s_config-search ).
+    ENDIF.
     mv_title = z2ui5_cl_tm_context=>url_param_get( val = `title`
                                                  url = client->get( )-s_config-search ).
-
-    DATA(lt_startup) = client->get( )-t_comp_params.
-    IF lv_tables IS INITIAL.
-      lv_tables = VALUE #( lt_startup[ n = `tables` ]-v OPTIONAL ).
-    ENDIF.
     IF mv_title IS INITIAL.
       mv_title = VALUE #( lt_startup[ n = `title` ]-v OPTIONAL ).
     ENDIF.
@@ -155,6 +157,15 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
   METHOD run_sub_app.
 
     DATA lv_new TYPE abap_bool.
+
+    " mv_selected_key is bound to the tab bar, so a request can carry any
+    " table name - only a table of the cluster (mt_table, read from the
+    " parameters on the server at the start) is opened
+    IF NOT line_exists( mt_table[ tabname = mv_selected_key ] ).
+      mv_selected_key = COND #( WHEN mv_shown_key IS NOT INITIAL
+                                THEN mv_shown_key
+                                ELSE mt_table[ 1 ]-tabname ).
+    ENDIF.
 
     IF mv_selected_key <> mv_shown_key.
 

@@ -1159,13 +1159,14 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
     " a table set by factory( ) or set_app_data( ) is checked as well
     IF mv_table IS INITIAL.
 
-      " TABLE per Parameter?
-      DATA(tab) = z2ui5_cl_tm_context=>url_param_get( val = 'table'
-                                                url = client->get( )-s_config-search ).
-
+      " the launchpad startup parameter first: a tile's table is the scope
+      " the administrator gave it, which a URL parameter the user adds must
+      " not change; without a tile (no startup parameter) the URL names it
+      DATA(startup_params) = client->get( )-t_comp_params.
+      DATA(tab) = VALUE string( startup_params[ n = 'table' ]-v OPTIONAL ).
       IF tab IS INITIAL.
-        DATA(startup_params) = client->get( )-t_comp_params.
-        tab = VALUE #( startup_params[ n = 'table' ]-v OPTIONAL ).
+        tab = z2ui5_cl_tm_context=>url_param_get( val = 'table'
+                                                url = client->get( )-s_config-search ).
       ENDIF.
 
       " no fallback table: without the parameter the app asks for one
@@ -1676,19 +1677,21 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
   METHOD get_config_by_url.
 
-    DATA(value) = z2ui5_cl_tm_context=>url_param_get( val = 'readonly'
-                                                      url = client->get( )-s_config-search ).
-    IF value IS INITIAL.
-      DATA(startup_params) = client->get( )-t_comp_params.
-      value = VALUE #( startup_params[ n = 'readonly' ]-v OPTIONAL ).
-    ENDIF.
+    " only ever switched on here, by either source: a URL must not lift the
+    " read-only mode a caller or a launchpad tile configured - a URL value
+    " that is not X used to hide the tile's startup parameter
+    DATA(startup_params) = client->get( )-t_comp_params.
+    DATA(lt_value) = VALUE string_table(
+        ( z2ui5_cl_tm_context=>url_param_get( val = 'readonly'
+                                              url = client->get( )-s_config-search ) )
+        ( VALUE #( startup_params[ n = 'readonly' ]-v OPTIONAL ) ) ).
 
-    " only ever switched on here: a URL must not lift the read-only mode a
-    " caller configured
-    value = to_upper( condense( value ) ).
-    IF value = `X` OR value = `TRUE` OR value = `1`.
-      ms_config-read_only = abap_true.
-    ENDIF.
+    LOOP AT lt_value INTO DATA(value).
+      value = to_upper( condense( value ) ).
+      IF value = `X` OR value = `TRUE` OR value = `1`.
+        ms_config-read_only = abap_true.
+      ENDIF.
+    ENDLOOP.
 
   ENDMETHOD.
 

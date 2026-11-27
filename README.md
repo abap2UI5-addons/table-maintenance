@@ -77,7 +77,11 @@ URL parameter `table`:
 Without the parameter (and without a launchpad startup parameter `table`) the
 app opens no table; it asks for the table name first. Add `&readonly=X` (URL
 or launchpad startup parameter) to show the table without any way to change
-it.
+it. In the launchpad, a tile's startup parameter `table` wins over a URL
+parameter of the same name, and `readonly=X` from either source switches the
+read-only mode on - a URL cannot widen or lift what the tile configured. Both
+are parameters the browser sends, not an authorization: restrict who may
+change which table with the authorizations of your system.
 
 From an app of your own, start it with the factory - the table, and
 optionally a configuration (`z2ui5_if_tm_001=>ty_s_config`):
@@ -113,6 +117,10 @@ parameters or launchpad startup parameters of the same names:
 ```
 ?app_start=z2ui5_cl_tm_002&tables=<TABLE_1>,<TABLE_2>&title=<TITLE>
 ```
+
+The cluster opens only the tables of that list - a tab key the browser sends
+for any other table is ignored - and a tile's startup parameter `tables`
+wins over the URL parameter.
 
 ### Parallel installation (namespace rename)
 
