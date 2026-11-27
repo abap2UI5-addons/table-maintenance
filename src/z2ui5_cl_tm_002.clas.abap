@@ -25,7 +25,7 @@ CLASS z2ui5_cl_tm_002 DEFINITION
         text    TYPE string,
         count   TYPE string,
       END OF ty_s_table.
-    TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_table WITH EMPTY KEY.
+    TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_table WITH DEFAULT KEY.
 
     DATA mv_selected_key TYPE string.
     " PUBLIC: the embedded app binds its own attributes, and the framework
@@ -100,8 +100,26 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     " the launchpad startup parameter first: a tile's tables are the scope
     " the administrator gave it, which a URL parameter the user adds must
     " not widen; without a tile (no startup parameter) the URL names them
-    DATA(lt_startup) = client->get( )-t_comp_params.
-    DATA(lv_tables) = VALUE string( lt_startup[ n = `tables` ]-v OPTIONAL ).
+    DATA lt_startup TYPE z2ui5_if_client=>ty_t_name_value.
+    DATA temp1 TYPE string.
+    DATA temp2 TYPE z2ui5_if_client=>ty_s_name_value.
+    DATA lv_tables LIKE temp1.
+      DATA temp3 TYPE string.
+      DATA temp4 TYPE z2ui5_if_client=>ty_s_name_value.
+      DATA temp5 LIKE sy-subrc.
+      DATA temp6 TYPE z2ui5_cl_tm_002=>ty_s_table.
+    DATA temp7 TYPE string.
+    DATA temp8 TYPE z2ui5_cl_tm_002=>ty_s_table.
+    lt_startup = client->get( )-t_comp_params.
+
+    CLEAR temp1.
+
+    READ TABLE lt_startup INTO temp2 WITH KEY n = `tables`.
+    IF sy-subrc = 0.
+      temp1 = temp2-v.
+    ENDIF.
+
+    lv_tables = temp1.
     IF lv_tables IS INITIAL.
       lv_tables = z2ui5_cl_tm_context=>url_param_get( val = `tables`
                                                     url = client->get( )-s_config-search ).
@@ -109,7 +127,14 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     mv_title = z2ui5_cl_tm_context=>url_param_get( val = `title`
                                                  url = client->get( )-s_config-search ).
     IF mv_title IS INITIAL.
-      mv_title = VALUE #( lt_startup[ n = `title` ]-v OPTIONAL ).
+
+      CLEAR temp3.
+
+      READ TABLE lt_startup INTO temp4 WITH KEY n = `title`.
+      IF sy-subrc = 0.
+        temp3 = temp4-v.
+      ENDIF.
+      mv_title = temp3.
     ENDIF.
     IF mv_title IS INITIAL.
       mv_title = `Table Maintenance`.
@@ -118,15 +143,28 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     SPLIT lv_tables AT `,` INTO TABLE lt_name.
     LOOP AT lt_name INTO lv_name.
       lv_name = to_upper( condense( lv_name ) ).
-      IF lv_name IS INITIAL OR line_exists( mt_table[ tabname = lv_name ] ).
+
+      READ TABLE mt_table WITH KEY tabname = lv_name TRANSPORTING NO FIELDS.
+      temp5 = sy-subrc.
+      IF lv_name IS INITIAL OR temp5 = 0.
         CONTINUE.
       ENDIF.
-      INSERT VALUE #( tabname = lv_name
-                      text    = z2ui5_cl_tm_context=>rtti_get_table_desrc( lv_name )
-                      count   = get_count( lv_name ) ) INTO TABLE mt_table.
+
+      CLEAR temp6.
+      temp6-tabname = lv_name.
+      temp6-text = z2ui5_cl_tm_context=>rtti_get_table_desrc( lv_name ).
+      temp6-count = get_count( lv_name ).
+      INSERT temp6 INTO TABLE mt_table.
     ENDLOOP.
 
-    mv_selected_key = VALUE #( mt_table[ 1 ]-tabname OPTIONAL ).
+
+    CLEAR temp7.
+
+    READ TABLE mt_table INTO temp8 INDEX 1.
+    IF sy-subrc = 0.
+      temp7 = temp8-tabname.
+    ENDIF.
+    mv_selected_key = temp7.
 
   ENDMETHOD.
 
@@ -161,10 +199,31 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     " mv_selected_key is bound to the tab bar, so a request can carry any
     " table name - only a table of the cluster (mt_table, read from the
     " parameters on the server at the start) is opened
-    IF NOT line_exists( mt_table[ tabname = mv_selected_key ] ).
-      mv_selected_key = COND #( WHEN mv_shown_key IS NOT INITIAL
-                                THEN mv_shown_key
-                                ELSE mt_table[ 1 ]-tabname ).
+    DATA temp9 LIKE sy-subrc.
+      DATA temp10 TYPE string.
+        FIELD-SYMBOLS <temp1> LIKE LINE OF mt_table.
+        DATA temp2 LIKE sy-tabix.
+        FIELD-SYMBOLS <left> TYPE z2ui5_cl_tm_002=>ty_s_table.
+    DATA page TYPE REF TO z2ui5_cl_ui5_view_builder.
+        DATA lx TYPE REF TO cx_root.
+    READ TABLE mt_table WITH KEY tabname = mv_selected_key TRANSPORTING NO FIELDS.
+    temp9 = sy-subrc.
+    IF NOT temp9 = 0.
+
+      IF mv_shown_key IS NOT INITIAL.
+        temp10 = mv_shown_key.
+      ELSE.
+
+
+        temp2 = sy-tabix.
+        READ TABLE mt_table INDEX 1 ASSIGNING <temp1>.
+        sy-tabix = temp2.
+        IF sy-subrc <> 0.
+          ASSERT 1 = 0.
+        ENDIF.
+        temp10 = <temp1>-tabname.
+      ENDIF.
+      mv_selected_key = temp10.
     ENDIF.
 
     IF mv_selected_key <> mv_shown_key.
@@ -188,7 +247,8 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
         ENDIF.
 
         " the entries may have changed - the count of the tab left behind
-        ASSIGN mt_table[ tabname = mv_shown_key ] TO FIELD-SYMBOL(<left>).
+
+        READ TABLE mt_table WITH KEY tabname = mv_shown_key ASSIGNING <left>.
         IF <left> IS ASSIGNED.
           <left>-count = get_count( mv_shown_key ).
         ENDIF.
@@ -200,7 +260,7 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
         mo_app->release_lock( client ).
       ENDIF.
 
-      mo_app = NEW #( ).
+      CREATE OBJECT mo_app.
       mo_app->ms_transport = ms_transport.
       mo_app->set_main_app_data( mv_selected_key ).
       mv_shown_key = mv_selected_key.
@@ -208,12 +268,14 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
 
     ENDIF.
 
-    DATA(page) = render_page( ).
+
+    page = render_page( ).
     mo_app->mo_parent_view = page.
 
     TRY.
         mo_app->z2ui5_if_app~main( client ).
-      CATCH cx_root INTO DATA(lx).
+
+      CATCH cx_root INTO lx.
         client->message_box_display( text = lx->get_text( )
                                      type = `error` ).
     ENDTRY.
@@ -228,7 +290,11 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
 
   METHOD render_page.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+      DATA temp11 TYPE string_table.
+    DATA items TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA ls_table LIKE LINE OF mt_table.
+    view = z2ui5_cl_ui5_view_builder=>factory(
         )->ele( n = `View` ns = `mvc`
             )->a( n = `xmlns`        v = `sap.m`
             )->a( n = `xmlns:mvc`    v = `sap.ui.core.mvc`
@@ -240,21 +306,26 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     IF client->get( )-check_launchpad_active = abap_true.
       result = view->ele( `Page`
           )->a( n = `showHeader` b = abap_false ).
+
+      CLEAR temp11.
+      INSERT mv_title INTO TABLE temp11.
       client->follow_up_action( val   = z2ui5_if_client=>cs_event-set_title_launchpad
-                                t_arg = VALUE #( ( mv_title ) ) ).
+                                t_arg = temp11 ).
     ELSE.
       result = view->ele( `Page`
           )->a( n = `title` t = mv_title ).
     ENDIF.
 
-    DATA(items) = result->ele( `IconTabBar`
+
+    items = result->ele( `IconTabBar`
         )->a( n = `class`       v = `sapUiResponsiveContentPadding`
         )->a( n = `selectedKey` v = client->_bind( mv_selected_key )
         " abap2ui5lint-disable-next-line event-without-handler -- the roundtrip carries the bound selectedKey; run_sub_app reacts to that
         )->a( n = `select`      v = client->_event( `TAB_SELECT` )
         )->ele( `items` ).
 
-    LOOP AT mt_table INTO DATA(ls_table).
+
+    LOOP AT mt_table INTO ls_table.
       items->tag( `IconTabFilter`
           )->a( n = `key`   t = ls_table-tabname
           )->a( n = `text`  t = ls_table-text
@@ -269,7 +340,7 @@ CLASS z2ui5_cl_tm_002 IMPLEMENTATION.
     DATA lv_count TYPE i.
 
     TRY.
-        SELECT COUNT(*) FROM (tabname) INTO @lv_count.
+        SELECT COUNT(*) FROM (tabname) INTO lv_count.
         result = |{ lv_count }|.
       CATCH cx_root.
         " no such table, or no access - the tab shows no count
