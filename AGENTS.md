@@ -47,7 +47,19 @@ not referenced.
 
 ## Dependencies
 
-- [abap2UI5](https://github.com/abap2UI5/abap2UI5) — the framework
+- [abap2UI5](https://github.com/abap2UI5/abap2UI5) — the framework, **pinned
+  to a release tag** (the `"branch"` key of the core dependency, abap2UI5
+  CONVENTIONS §9): users install a release next to this addon, so the checks
+  run against that release and not against the framework's `main`. The three
+  abaplint configs carry the pin (`abaplint.jsonc`,
+  `.github/abaplint/abap_cloud.jsonc` and the downported `<tag>-702` form in
+  `.github/abaplint/abap_702.jsonc`; the namespace rename clones the core at
+  the pin of `abaplint.jsonc`); read and move it only with
+  `scripts/core-pin.mjs` (`get` fails when they disagree). `bump-deps.yaml`
+  moves it monthly to the newest release, in its one pull request
+  (`bump-core.yaml` does it alone, by hand), and the scheduled run of `ci`
+  lints once against the core's `main` as the canary (`core-pin.mjs set
+  main`, never committed)
 - [layout-management](https://github.com/abap2UI5-addons/layout-management) — variant-managed table and form layouts
 - [popups](https://github.com/abap2UI5-addons/popups) — value help and search help
 
@@ -63,7 +75,8 @@ config gives popups a folder of its own (`/popups-702`): the template fills
 
 CI: `ci` (abaplint Standard and Cloud, the abap2UI5-linter, the rename check -
 one job each), `ci-702` (writes and lints the downported branch `702`),
-`build-rename`, `deploy-pages`, `bump-deps` - each a call of the template.
+`build-rename`, `deploy-pages`, `bump-deps` - each a call of the template -
+and `bump-core` (the core release pin, above).
 
 ## Build and verify
 

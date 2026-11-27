@@ -10,9 +10,11 @@ name: ci
 #
 #   No unit job: the repository has no ABAP Unit test class yet.
 #
+# The core is pinned to a release tag (scripts/core-pin.mjs).
+#
 # The sibling addons are resolved at the commit .github/deps.json pins, and
 # the monthly bump-deps moves the pins. The weekly run is the canary: it
-# resolves them at the tip of their main, so an upstream rename is
+# resolves them at the tip of their main (and the core at its main), so an upstream rename is
 # noticed while no pull request is open.
 
 on:
@@ -41,3 +43,4 @@ jobs:
       abaplint: '["./abaplint.jsonc", ".github/abaplint/abap_cloud.jsonc"]'
       rename: true
       canary: ${{ github.event_name == 'schedule' }}
+      canary-setup: node scripts/core-pin.mjs set main
