@@ -249,7 +249,9 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
 
       DATA(enabled) = xsdbool( NOT ( dfies->keyflag = abap_true AND mv_edit = abap_true ) ).
 
-      IF dfies->fieldname = 'MANDT' OR mv_read_only = abap_true.
+      " the client - named MANDT, or CLIENT on ABAP Cloud - is the logon
+      " client on the save, whatever is entered
+      IF dfies->datatype = 'CLNT' OR dfies->fieldname = 'MANDT' OR mv_read_only = abap_true.
         enabled = abap_false.
       ENDIF.
 
@@ -683,7 +685,10 @@ CLASS z2ui5_cl_tm_pop IMPLEMENTATION.
                                       CHANGING  value    = <value_tab> ).
       ELSE.
 
-        IF dfies-lowercase = abap_false.
+        " upper case only where the DDIC says so: the field list of ABAP
+        " Cloud carries neither the lower-case flag nor the internal type,
+        " and a value is then kept as entered rather than changed
+        IF dfies-lowercase = abap_false AND dfies-inttype IS NOT INITIAL.
           <value_struc> = to_upper( <value_struc> ).
         ENDIF.
 

@@ -115,6 +115,12 @@ CLASS z2ui5_cl_tm_001 DEFINITION
 
     METHODS get_dfies.
 
+    "! The DDIC field list of ABAP Cloud has no data types: the client
+    "! column gets the type CLNT here, so that it is left out of the keys,
+    "! the row hash and the duplicate check and cannot be edited - as on
+    "! Standard ABAP
+    METHODS set_client_field.
+
     METHODS row_select.
 
     METHODS render_main.
@@ -1042,6 +1048,12 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
 
     mt_dfies = z2ui5_cl_tm_context=>rtti_get_t_dfies_by_table_name( mv_table ).
 
+    " every check of the app and of the popup finds the client column by its
+    " data type CLNT - ABAP Cloud answers the fields without one
+    IF NOT line_exists( mt_dfies[ datatype = 'CLNT' ] ).
+      set_client_field( ).
+    ENDIF.
+
     " Check if the DB for the F4 Help is released
     LOOP AT mt_dfies REFERENCE INTO DATA(dfies) WHERE checktable IS NOT INITIAL.
       TRY.
@@ -1057,6 +1069,50 @@ CLASS z2ui5_cl_tm_001 IMPLEMENTATION.
           CLEAR dfies->checktable.
       ENDTRY.
     ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD set_client_field.
+
+    DATA descr        TYPE REF TO cl_abap_typedescr.
+    DATA struct_descr TYPE REF TO cl_abap_structdescr.
+    DATA comp_descr   TYPE REF TO cl_abap_datadescr.
+    DATA elem_descr   TYPE REF TO cl_abap_elemdescr.
+
+    " the client is the first key field - on ABAP Cloud a column CLIENT (or
+    " MANDT) of the built-in type CLNT, which RTTI shows as a CHAR 3
+    " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
+    ASSIGN mt_dfies[ keyflag = abap_true ] TO FIELD-SYMBOL(<dfies>).
+    IF <dfies> IS NOT ASSIGNED OR <dfies>-datatype IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+    IF <dfies>-fieldname <> 'CLIENT' AND <dfies>-fieldname <> 'MANDT'.
+      RETURN.
+    ENDIF.
+
+    cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = mv_table
+                                         RECEIVING  p_descr_ref    = descr
+                                         EXCEPTIONS type_not_found = 1
+                                                    OTHERS         = 2 ).
+    IF sy-subrc <> 0 OR descr->kind <> cl_abap_typedescr=>kind_struct.
+      RETURN.
+    ENDIF.
+
+    struct_descr ?= descr.
+    struct_descr->get_component_type( EXPORTING  p_name                 = <dfies>-fieldname
+                                      RECEIVING  p_descr_ref            = comp_descr
+                                      EXCEPTIONS component_not_found    = 1
+                                                 unsupported_input_type = 2
+                                                 OTHERS                 = 3 ).
+    IF sy-subrc <> 0 OR comp_descr->kind <> cl_abap_typedescr=>kind_elem
+        OR comp_descr->type_kind <> cl_abap_typedescr=>typekind_char.
+      RETURN.
+    ENDIF.
+
+    elem_descr ?= comp_descr.
+    IF elem_descr->output_length = 3.
+      <dfies>-datatype = 'CLNT'.
+    ENDIF.
 
   ENDMETHOD.
 
